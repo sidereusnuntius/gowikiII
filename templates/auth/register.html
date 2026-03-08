@@ -1,0 +1,27 @@
+{{define "content"}}
+<form id="register-form" action="/register" method="POST">
+  <div class="form-field">
+    <label for="username">Username</label>
+    <br />
+    <input id="username" name="username" type="text" data-bind:username required>
+  </div>
+
+  <div class="form-field">
+    <label for="email">E-mail</label>
+    <br />
+    <input id="email" name="email" type="email" data-bind:email required>
+  </div>
+
+  <div class="form-field">
+    <label for="password">Password</label>
+    <br />
+    <input id="password" name="password" type="password" data-bind:password required>
+  </div>
+
+  <button type="button" data-on:click="@post('/register', {
+				       })">Register</button>
+
+  <p id="signup-result"></p>
+  <!-- TODO: check if the client has javascript enabled and change the type to submit.-->
+</form>
+{{end}}
