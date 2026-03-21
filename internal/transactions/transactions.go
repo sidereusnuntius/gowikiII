@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/rs/zerolog/log"
 )
 
 type SqlExecutor interface {
@@ -25,6 +27,7 @@ type txKey struct{}
 
 func (tm *TxManager) RunInTx(ctx context.Context, fn func(context.Context) error) error {
 	if tx, ok := ctx.Value(txKey{}).(SqlExecutor); ok && tx != nil {
+		log.Debug().Msg("found tx in context")
 		return fn(ctx)
 	}
 

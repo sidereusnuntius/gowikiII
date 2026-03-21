@@ -1,0 +1,18 @@
+{{ define "content" }}
+<form action="/login" method="POST" fx-target="#page-container" fx-swap="innerHTML" fx-action="/login" fx-method="POST">
+  <p class="error-display"></p>
+  <div class="form-field">
+    <label for="email">Email</label>
+    <br />
+    <input id="email" name="email" type="email" required>
+  </div>
+
+  <div class="form-field">
+    <label for="password">Password</label>
+    <br />
+    <input id="password" name="password" type="password" required>
+  </div>
+
+  <button type="submit">Login</button>
+</form>
+{{ end }}

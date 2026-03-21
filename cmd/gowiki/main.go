@@ -1,52 +1,46 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
+	"errors"
 	"net/http"
+	"os"
 
-	"github.com/sidereusnuntius/gowiki/internal/db/sqlite"
-	"github.com/sidereusnuntius/gowiki/internal/server"
-	"github.com/sidereusnuntius/gowiki/internal/transactions"
-	"github.com/sidereusnuntius/gowiki/internal/wiki"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/sidereusnuntius/gowiki/cmd/gowiki/setup"
+	"github.com/sidereusnuntius/gowiki/internal/config"
+	"github.com/sidereusnuntius/gowiki/internal/db"
 )
 
 func main() {
-	pool, err := sql.Open("sqlite3", "./test.db")
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	dbConfig := config.DbConfig{
+		URL: "./test.db",
+	}
+
+	// log.With().Stack().Logger()
+	log.Info().Msg("started gowiki")
+	log.Info().Str("database URL", dbConfig.URL).Msg("attempting to connect to Sqlite database")
+	db, err := db.Open(dbConfig)
 	if err != nil {
-		fmt.Printf("failed to open connection: %w", err)
+		log.Fatal().Err(err).Msg("failed to connect to database")
 	}
 
-	if err = pool.Ping(); err != nil {
-		_ = pool.Close()
-		fmt.Printf("failed to ping database: %w", err)
+	defer func() {
+		log.Info().Msg("closing database handle")
+		if err := db.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close database handle")
+		}
+	}()
+
+	wiki := setup.SetupWiki(db)
+	log.Info().
+		Int("port", config.Config.Port).
+		Str("address", config.Config.Host).
+		Str("name", config.Config.Name).
+		Msgf("starting gowiki")
+	if err := wiki.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal().Err(err).Msg("failed to start http server")
 	}
-
-	tm := txdb.TxManager{DB: pool}
-
-	store, err := sqlite.Init(pool)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	auth := wiki.NewAuth(store, &tm)
-	handler := server.AuthHandler{
-		AuthService: auth,
-	}
-
-	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux)
-
-	fileServer := http.FileServer(http.Dir("./static"))
-
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
-
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
-	}
-
-	if err := server.ListenAndServe(); err != nil {
-		fmt.Println(err)
-	}
+	log.Info().Msg("stopped server")
 }

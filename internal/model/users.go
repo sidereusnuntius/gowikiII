@@ -11,7 +11,7 @@ type RegisterInput struct {
 }
 
 type User struct {
-	Id        int64
+	ID        int64
 	Username  string
 	Email     string
 	Password  []byte

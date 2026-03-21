@@ -1,5 +1,5 @@
 {{define "content"}}
-<form id="register-form" action="/register" method="POST">
+<form id="register-form" action="/register" method="POST" fx-action="/register" fx-target="#signup-result" fx-swap="innerHTML" fx-method="POST">
   <div class="form-field">
     <label for="username">Username</label>
     <br />
@@ -18,7 +18,7 @@
     <input id="password" name="password" type="password" data-bind:password required>
   </div>
 
-  <button type="button" data-on:click="@post('/register', {
+  <button type="submit" data-on:submit="@post('/register', {
 				       })">Register</button>
 
   <p id="signup-result"></p>

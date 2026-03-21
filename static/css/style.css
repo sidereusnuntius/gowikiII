@@ -1,13 +1,20 @@
 * {
     margin: 0;
     padding: 0;
-    font-family: Georgia, seriff;
+    font-family: "Helvetica";
 }
 
-#register-form {
+a, a:visited {
+    text-decoration: none;
+    color: black;
+    font-weight: 600;
+}
+
+#page-container {
     border: 1px solid black;
     margin: 10px auto;
     width: 100ch;
+    height: 100vh;
     padding: 10px;
 }
 
@@ -17,11 +24,11 @@
     border: 1px solid black;
 }
 
-#register-form > .form-field + .form-field {
+form > .form-field + .form-field {
     margin-top: 20px;
 }
 
-#register-form button {
+form button {
     padding: 4px 8px;
     margin-top: 10px;
 }
