@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 const cookieName = "sessionId"
@@ -21,7 +21,7 @@ type Handler struct {
 func (handler *Handler) Temp(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 	}
 
 	p.Render("main.html")
@@ -39,13 +39,13 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 func (handler *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 		return
 	}
 
 	err = handler.SessionStore.DeleteSession(p.Ctx, p.Content.Session.Token)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to delete session after logout")
+		wikilog.Logger.Error().Err(err).Msg("failed to delete session after logout")
 	}
 
 	ClearToken(w)
@@ -58,7 +58,7 @@ func (handler *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 	}
 	p.Content.Title = "Login"
 
@@ -68,7 +68,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) LoginAction(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 		return
 	}
 
@@ -115,7 +115,7 @@ func ClearToken(w http.ResponseWriter) {
 func (handler *Handler) RegisterAction(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 	}
 
 	in := model.RegisterInput{
@@ -130,7 +130,7 @@ func (handler *Handler) RegisterAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(session.Token) > 0{
+	if len(session.Token) > 0 {
 		SetToken(w, &session)
 		p.Content.Session = &session
 		p.Content.Authenticated = true
@@ -142,7 +142,7 @@ func (handler *Handler) RegisterAction(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	page, err := render.Init(w, r)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize request data")
+		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
 		return
 	}
 

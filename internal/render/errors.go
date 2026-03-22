@@ -3,8 +3,8 @@ package render
 import (
 	"net/http"
 
-	"github.com/rs/zerolog/log"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 func (p *Page) HandleError(err error) {
@@ -18,6 +18,6 @@ func (p *Page) HandleError(err error) {
 	default:
 		header.Set("FX-Error", err.Error())
 		p.writer.WriteHeader(http.StatusInternalServerError)
-		log.Error().Err(err).Msg("internal server error")
+		wikilog.Logger.Error().Err(err).Msg("internal server error")
 	}
 }

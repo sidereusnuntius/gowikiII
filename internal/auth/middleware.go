@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 func (handler *Handler) SessionMiddleware(next http.Handler) http.Handler {
@@ -24,12 +24,12 @@ func (handler *Handler) SessionMiddleware(next http.Handler) http.Handler {
 			switch {
 			case err != nil:
 				ClearToken(w) // TODO: only clear if token is not found.
-				log.Error().Err(err).Msg("failed to retrieve session from session store")
+				wikilog.Logger.Error().Err(err).Msg("failed to retrieve session from session store")
 			case session.Expiration.Before(time.Now()):
-				log.Debug().Msg("cleaning up expired sessions")
+				wikilog.Logger.Debug().Msg("cleaning up expired sessions")
 				ClearToken(w)
 				if err = handler.SessionStore.DeleteSession(ctx, token); err != nil {
-					log.Error().Err(err).Str("token", token).Msg("failed to delete session from session store")
+					wikilog.Logger.Error().Err(err).Str("token", token).Msg("failed to delete session from session store")
 				}
 			default:
 				// TODO: define a save method that allows handlers to update the session and restart the TTL. This can be useful if I later want to store additional data in the session.

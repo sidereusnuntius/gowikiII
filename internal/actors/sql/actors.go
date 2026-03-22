@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 
 	sqlhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/sql"
 	"github.com/sidereusnuntius/gowiki/internal/model"
@@ -93,7 +92,7 @@ func (s *ActorsStore) SaveActor(ctx context.Context, actor *model.Actor) error {
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		log.Print(err) // Return error?
+		return err // Return error?
 	}
 	actor.ID = id
 

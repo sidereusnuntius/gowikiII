@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/validation"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -50,7 +50,7 @@ func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin b
 		return model.Session{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	log.Debug().Msgf("welcome aboard, %s!", in.Username)
+	wikilog.Logger.Debug().Msgf("welcome aboard, %s!", in.Username)
 	// Perform validation.
 	user := model.User{
 		Username: in.Username,
@@ -78,7 +78,7 @@ func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin b
 
 	session := CreateSession(&user)
 	if err = a.Sessions.SaveSession(ctx, session); err != nil {
-		log.Error().Err(err).Msg("a.Sessions.SaveSession(): failed to save session after registration")
+		wikilog.Logger.Error().Err(err).Msg("a.Sessions.SaveSession(): failed to save session after registration")
 		return model.Session{}, nil
 	}
 

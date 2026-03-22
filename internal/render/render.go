@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 var templatesHome string
@@ -84,17 +85,17 @@ func (p *Page) RenderError(err error) error {
 }
 
 func (p *Page) PatchElement(path, templateName, selector string) {
-	log.Debug().Str("template", path).Str("selector", selector).Msg("patching element")
+	wikilog.Logger.Debug().Str("template", path).Str("selector", selector).Msg("patching element")
 	p.writer.Header().Set("FX-target", selector)
 	p.writer.WriteHeader(p.status)
 
 	tmpl, err := template.ParseFiles(TemplatePath(path))
 	if err != nil {
-		log.Error().Err(err).Msg("failed to parse template")
+		wikilog.Logger.Error().Err(err).Msg("failed to parse template")
 	}
 
 	if err = tmpl.ExecuteTemplate(p.writer, templateName, p.Content); err != nil {
-		log.Error().
+		wikilog.Logger.Error().
 			Err(err).
 			Str("template", path).
 			Msg("failed to execute template")
@@ -103,7 +104,7 @@ func (p *Page) PatchElement(path, templateName, selector string) {
 
 func (p *Page) ReloadPage(path string) {
 	var err error
-	log.Debug().Str("path", path).Msg("reloading full page")
+	wikilog.Logger.Debug().Str("path", path).Msg("reloading full page")
 	header := p.writer.Header()
 	header.Add("Fx-Target", "#page-container")
 	header.Add("Content-Type", "text/html")
@@ -113,11 +114,11 @@ func (p *Page) ReloadPage(path string) {
 		TemplatePath(path),
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to parse template")
+		wikilog.Logger.Error().Err(err).Msg("failed to parse template")
 	}
 
 	if err = tmpl.ExecuteTemplate(p.writer, "container", p.Content); err != nil {
-		log.Error().Err(err).Msg("failed to reload page")
+		wikilog.Logger.Error().Err(err).Msg("failed to reload page")
 	}
 }
 
@@ -149,12 +150,12 @@ func (p *Page) Render(path string) {
 
 		tmpl, err := template.ParseFiles(TemplatePath(path))
 		if err != nil {
-			log.Error().Err(err).Str("template", path).Msg("failed to parse template file")
+			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to parse template file")
 		}
 
 		err = tmpl.ExecuteTemplate(p.writer, "content", p.Content)
 		if err != nil {
-			log.Error().Err(err).Str("template", path).Msg("failed to execute template")
+			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to execute template")
 		}
 		l.Msg("patched element via Fixi")
 
@@ -170,13 +171,13 @@ func (p *Page) render(path string) {
 
 	p.template, err = p.template.ParseFiles(p.subtemplates...)
 	if err != nil {
-		log.Error().Err(err).Strs("subtemplates", p.subtemplates).Msg("failed to read subtemplates from files")
+		wikilog.Logger.Error().Err(err).Strs("subtemplates", p.subtemplates).Msg("failed to read subtemplates from files")
 	}
 
 	if err = p.template.Execute(p.writer, p.Content); err != nil {
-		log.Error().Err(err).Str("template", path).Msg("failed to execute template")
+		wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to execute template")
 	}
-	log.Debug().Str("template", path).Strs("subtemplates", p.subtemplates).Msg("rendered template")
+	wikilog.Logger.Debug().Str("template", path).Strs("subtemplates", p.subtemplates).Msg("rendered template")
 }
 
 func TemplatePath(path string) string {
@@ -191,17 +192,17 @@ func init() {
 		templatesHome = "./templates"
 	}
 
-	log.Info().Msgf("loading templates from %s", templatesHome)
+	wikilog.Logger.Info().Msgf("loading templates from %s", templatesHome)
 
 	info, err := os.Stat(templatesHome)
 	if err != nil {
-		log.Fatal().
+		wikilog.Logger.Fatal().
 			Err(err).
 			Msg("failed to obtain information about templates folder")
 		return
 	}
 
 	if !info.IsDir() {
-		log.Fatal().Msgf("%s is not a directory", templatesHome)
+		wikilog.Logger.Fatal().Msgf("%s is not a directory", templatesHome)
 	}
 }
