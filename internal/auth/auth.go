@@ -38,16 +38,16 @@ func NewAuth(store Store, sessionStore SessionStore, manager *txdb.TxManager) *A
 }
 
 // TODO: add logic for creating ActivityPub actor and email verification.
-func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin bool) error {
+func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin bool) (model.Session, error) {
 	normalizeFields(&in)
 	err := validateUser(&in)
 	if err != nil {
-		return err
+		return model.Session{}, err
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(in.Password), 10)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return model.Session{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	log.Debug().Msgf("welcome aboard, %s!", in.Username)
@@ -73,10 +73,16 @@ func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin b
 		return nil
 	})
 	if err != nil {
-		return err
+		return model.Session{}, err
 	}
 
-	return nil
+	session := CreateSession(&user)
+	if err = a.Sessions.SaveSession(ctx, session); err != nil {
+		log.Error().Err(err).Msg("a.Sessions.SaveSession(): failed to save session after registration")
+		return model.Session{}, nil
+	}
+
+	return session, nil
 }
 
 func (a *Auth) Authenticate(ctx context.Context, in model.LoginInput) (model.Session, error) {

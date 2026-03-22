@@ -1,10 +1,23 @@
+function onChangeInputHandler(event) {
+  console.log(event)
+  if (!event.target) {
+    return;
+  }
+  const input = event.target;
+  input.removeAttribute('aria-invalid');
+  document.querySelector(`.error-msg[for=${input.id}]`).textContent = '';
+}
+
+function addEventListeners() {
+  document.querySelectorAll('input').forEach((input) => {
+    input.addEventListener('input', (event) => onChangeInputHandler(event))
+  })
+}
+
 function handleCode(event) {
   const res = event.detail.cfg.response;
   // Handling different error codes.
   // 303: trigger a fixi request to the path provided in the fx-redirect header. Using the default Location header was causing some problems I haven't managed to fix yet.
-  // 400 Bad Request: validation errors.
-  // >= 401: swap the error-display element. I think a better approach would be to have multiple headers with a common prefix, allowing the frontend to render errors on
-  // multiple input fields, for instance.
   switch (res.status) {
     case 303:
       // McGyverism alert: since there is no way to programmatically trigger a fixi request, I have a "redirector" button. If we want to do a request from Javascript,
@@ -12,30 +25,36 @@ function handleCode(event) {
       const button = document.querySelector("#redirector");
       button.setAttribute("fx-action", res.headers.get("fx-redirect"));
       button.setAttribute("fx-target", res.headers.get("fx-redirect-target"));
-      console.log("should click on button");
       button.click();
-    case 400:
+    case 400: // Bad request
+      /*
+      One or more input values provided by the user are incorrect. We expect the response to contain a set of headers, each starting with Err- followed by
+      the name attribute of the incorrect input control. We use the value of each header as the error message for the corresponding input control
+      */
       res.headers.forEach((value, name) => {
         if (name.length >= 4 && name.startsWith("err-")) {
           const fieldname = name.slice(4);
           const input = document.querySelector(`[name=${fieldname}]`);
           if (input) {
             input.setAttribute("aria-invalid", "true");
-            document.querySelector(
-              `.inline-error[for=${input.id}]`,
-            ).textContent = value;
+            input.setCustomValidity(value);
+            document.querySelector(`.error-msg[for=${input.id}]`).textContent = value;
           }
         }
       });
       console.log(res.headers);
     default:
-      event.detail.cfg.target = document.querySelector(".error-display");
-      event.detail.cfg.swap = "innerHTML";
+      const notice = document.querySelector(".error-message");
+      if (notice) {
+        notice.textContent = res.headers.get("fx-error");
+        notice.focus();
+      }
   }
   event.preventDefault();
 }
 
 document.addEventListener("fx:after", (event) => {
+  addEventListeners();
   if (!event || !event.detail) {
     return;
   }
@@ -72,3 +91,4 @@ document.addEventListener("fx:after", (event) => {
 });
 
 console.log("hello from the other side! :)");
+addEventListeners()

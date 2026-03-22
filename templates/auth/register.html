@@ -8,42 +8,35 @@
     fx-swap="innerHTML"
     fx-method="POST"
 >
+    <p class="error-message" aria-live="assertive"></p>
     <div class="form-field">
         <label for="username">Username</label>
-        <br />
         <input id="username" name="username" type="text" required />
-        <label
-            class="inline-error"
-            for="username"
-            aria-live="assertive"
-        ></label>
+        <label class="error-msg" for="username" aria-live="assertive"></label>
     </div>
 
     <div class="form-field">
         <label for="email">E-mail</label>
-        <br />
         <input id="email" name="email" type="email" required />
-        <label class="inline-error" for="email" aria-live="assertive"></label>
+        <label class="error-msg" for="email" aria-live="assertive"></label>
     </div>
 
     <div class="form-field">
         <label for="password">Password</label>
-        <br />
         <input id="password" name="password" type="password" required />
-        <label
-            class="inline-error"
-            for="password"
-            aria-live="assertive"
-        ></label>
+        <label class="error-msg" for="password" aria-live="assertive"></label>
     </div>
 
-    <button
-        type="submit"
-        fx-action="/register"
-        fx-method="POST"
-        fx-target="#page-container"
-    >
-        Register
-    </button>
+    <footer class="form-footer">
+        <button
+            type="submit"
+            fx-action="/register"
+            fx-method="POST"
+            fx-target="#page-container"
+            fx-swap="innerHTML"
+        >
+            Register
+        </button>
+    </footer>
 </form>
 {{end}}

@@ -52,9 +52,7 @@ func (handler *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	p.Content.Session = nil
 	p.Content.Authenticated = false
 	// TODO: redirect the user to the page in which they clicked logout.
-	p.Redirect("/login", "#content")
-	p.PatchElement("/header.html", "header", "header")
-	p.SetHeader(http.StatusSeeOther)
+	p.ReloadPage("auth/login.html")
 }
 
 func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -126,12 +124,19 @@ func (handler *Handler) RegisterAction(w http.ResponseWriter, r *http.Request) {
 		Password: p.GetString("password"),
 	}
 
-	err = handler.AuthService.RegisterUser(r.Context(), in, false)
+	session, err := handler.AuthService.RegisterUser(r.Context(), in, false)
 	if err != nil {
 		p.HandleError(err)
 		return
 	}
-	p.Write("Successfully registered!")
+
+	if len(session.Token) > 0{
+		SetToken(w, &session)
+		p.Content.Session = &session
+		p.Content.Authenticated = true
+	}
+
+	p.ReloadPage("main.html")
 }
 
 func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
