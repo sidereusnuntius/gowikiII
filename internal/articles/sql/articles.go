@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	selectArticle        = "SELECT id, slug, host, iri, published, federated_edits, restricted_edits FROM articles WHERE slug = ? AND host = ?"
+	articleExists        = "SELECT EXISTS(SELECT 1 FROM articles WHERE slug = ? AND host = ?)"
 	insertArticle        = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
 	insertArticleContent = `INSERT INTO localized_articles (
 	lang_code,
@@ -82,6 +84,42 @@ func New(db *sql.DB) *ArticleStore {
 	return &ArticleStore{
 		DB: db,
 	}
+}
+
+func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (model.Article, error) {
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectArticle, slug, host)
+
+	var article model.Article
+	var published sql.NullInt64
+
+	err := row.Scan(
+		&article.ID,
+		&article.Slug,
+		&article.Host,
+		&article.IRI,
+		&published,
+		&article.FederatedEdits,
+		&article.Restricted,
+	)
+	if err != nil {
+		return model.Article{}, err
+	}
+
+	if published.Valid {
+		article.Published = time.Unix(published.Int64, 0)
+	}
+
+	return article, nil
+}
+
+func (as *ArticleStore) ArticleExistsLocally(ctx context.Context, slug, host string) (bool, error) {
+	var exists bool
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, articleExists, slug, host)
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 func (as *ArticleStore) SaveArticle(ctx context.Context, article *model.Article) error {
