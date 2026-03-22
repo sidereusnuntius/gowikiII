@@ -81,18 +81,16 @@ func (handler *Handler) LoginAction(w http.ResponseWriter, r *http.Request) {
 
 	session, err := handler.AuthService.Authenticate(p.Ctx, in)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to authenticate user")
-		if err = p.RenderError(err); err != nil {
-			log.Error().Err(err).Msg("failure when rendering error")
-		}
+		p.HandleError(err)
 		return
 	}
 
 	SetToken(w, &session)
 	p.Content.Session = &session
 	p.Content.Authenticated = true
-	p.Redirect("/", "#content")
-	p.PatchElement("header.html", "header", "header")
+	p.ReloadPage("main.html")
+	// TODO: when the user successfully logs in or registers, we want to redirect them to the page they were before, but
+	// we will set a query parameter which will triger the full reload of the #page-container.
 }
 
 func SetToken(w http.ResponseWriter, session *model.Session) {
@@ -130,7 +128,7 @@ func (handler *Handler) RegisterAction(w http.ResponseWriter, r *http.Request) {
 
 	err = handler.AuthService.RegisterUser(r.Context(), in, false)
 	if err != nil {
-		p.Write("Error: " + err.Error())
+		p.HandleError(err)
 		return
 	}
 	p.Write("Successfully registered!")

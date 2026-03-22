@@ -50,7 +50,11 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 
 	if !page.isFx {
 		// If it's not a fixi request, then we need to render the whole page.
-		page.template, err = template.ParseFiles(TemplatePath("index.html"), TemplatePath("header.html"))
+		page.template, err = template.ParseFiles(
+			TemplatePath("index.html"),
+			TemplatePath("container.html"),
+			TemplatePath("header.html"),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read common layout from file: %w", err)
 		}
@@ -101,16 +105,18 @@ func (p *Page) ReloadPage(path string) {
 	var err error
 	log.Debug().Str("path", path).Msg("reloading full page")
 	header := p.writer.Header()
-	header.Add("Fx-Target", "header")
-	header.Add("Fx-Redirect", "/")
+	header.Add("Fx-Target", "#page-container")
 	header.Add("Content-Type", "text/html")
-	p.writer.WriteHeader(http.StatusSeeOther)
-	tmpl, err := template.ParseFiles(TemplatePath("header.html"))
+	tmpl, err := template.ParseFiles(
+		TemplatePath("container.html"),
+		TemplatePath("header.html"),
+		TemplatePath(path),
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to parse template")
 	}
 
-	if err = tmpl.ExecuteTemplate(p.writer, "header", p.Content); err != nil {
+	if err = tmpl.ExecuteTemplate(p.writer, "container", p.Content); err != nil {
 		log.Error().Err(err).Msg("failed to reload page")
 	}
 }

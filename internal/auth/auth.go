@@ -5,11 +5,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/validation"
+	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,12 +39,18 @@ func NewAuth(store Store, sessionStore SessionStore, manager *txdb.TxManager) *A
 
 // TODO: add logic for creating ActivityPub actor and email verification.
 func (a *Auth) RegisterUser(ctx context.Context, in model.RegisterInput, admin bool) error {
+	normalizeFields(&in)
+	err := validateUser(&in)
+	if err != nil {
+		return err
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(in.Password), 10)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	log.Debug().Str("email", in.Email).Str("username", in.Username).Msg("registering user")
+	log.Debug().Msgf("welcome aboard, %s!", in.Username)
 	// Perform validation.
 	user := model.User{
 		Username: in.Username,
@@ -98,4 +107,34 @@ func CreateSession(user *model.User) model.Session {
 		Expiration: time.Now().Add(SessionDuration),
 		User:       *user,
 	}
+}
+
+// normalizeFields trims the username and email and turns them to lowercase.
+func normalizeFields(in *model.RegisterInput) {
+	in.Username = strings.ToLower(
+		strings.TrimSpace(in.Username),
+	)
+	in.Email = strings.ToLower(
+		strings.TrimSpace(in.Email),
+	)
+}
+
+func validateUser(in *model.RegisterInput) error {
+	ve := wikierr.NewValidationError()
+
+	if err := validation.Username.Apply(in.Username); err != nil {
+		ve.Append("username", err)
+	}
+	if err := validation.Email.Apply(in.Email); err != nil {
+		ve.Append("email", err)
+	}
+	if err := validation.Password.Apply(in.Password); err != nil {
+		ve.Append("password", err)
+	}
+
+	if len(ve.Fields) != 0 {
+		return ve
+	}
+
+	return nil
 }

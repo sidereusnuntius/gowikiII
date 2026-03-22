@@ -3,13 +3,13 @@ CREATE TABLE IF NOT EXISTS articles (
     id INTEGER PRIMARY KEY,
     slug TEXT NOT NULL,
     host TEXT NOT NULL,
-    uri TEXT NOT NULL,
+    iri TEXT NOT NULL,
     published INTEGER DEFAULT (unixepoch('now')),
     -- Whether the article can be edited by users from other servers.
     federated_edits BOOLEAN DEFAULT false,
-    trusted_users_only BOOLEAN DEFAULT false NOT NULL,
+    restricted_edits BOOLEAN DEFAULT false,
 
-    UNIQUE (uri),
+    UNIQUE (iri),
     UNIQUE (slug, host)
 );
 
@@ -33,16 +33,17 @@ CREATE TABLE IF NOT EXISTS localized_articles (
 
 CREATE TABLE IF NOT EXISTS revisions (
     id INTEGER PRIMARY KEY,
-    uri TEXT NOT NULL,
+    iri TEXT NOT NULL,
+    code TEXT NOT NULL,
     diff TEXT NOT NULL,
     prev_revision_id INTEGER,
     summary TEXT,
     localized_article_id INTEGER NOT NULL,
     published INTEGER DEFAULT (unixepoch('now')) NOT NULL,
     actor_internal_id INTEGER,
-    actor_uri TEXT,
+    actor_iri TEXT,
 
-    UNIQUE (uri),
+    UNIQUE (iri),
     FOREIGN KEY (actor_internal_id) REFERENCES actors (id),
     FOREIGN KEY (localized_article_id) REFERENCES localized_articles (id),
     FOREIGN KEY (prev_revision_id) REFERENCES revisions (id)
@@ -52,7 +53,7 @@ CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY,
     slug TEXT NOT NULL,
     host TEXT NOT NULL,
-    uri TEXT  UNIQUE NOT NULL,
+    iri TEXT  UNIQUE NOT NULL,
 
     UNIQUE (slug, host)
 );
