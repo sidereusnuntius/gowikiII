@@ -20,7 +20,7 @@ func New(db *sql.DB) SqliteSessionStore {
 }
 
 const (
-	selectFullSession     = "SELECT s.token, s.expires_at, s.created_at, u.username, u.email, u.verified, u.is_admin FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?"
+	selectFullSession     = "SELECT s.token, s.expires_at, s.created_at, u.id, u.username, u.email, u.verified, u.is_admin FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?"
 	saveSession           = "INSERT INTO sessions (token, expires_at, user_id) VALUES (?, ?, ?)"
 	deleteSession         = "DELETE FROM sessions WHERE token = ?"
 	deleteExpiredSessions = "DELETE FROM sessions WHERE expires_at <= (unixepoch('now'))"
@@ -37,6 +37,7 @@ func (s *SqliteSessionStore) GetFullSession(ctx context.Context, token string) (
 		&session.Token,
 		&expires,
 		&created,
+		&session.User.ID,
 		&session.User.Username,
 		&session.User.Email,
 		&session.User.Verified,

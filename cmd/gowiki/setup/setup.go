@@ -28,18 +28,22 @@ func SetupWiki(db *sql.DB) Wiki {
 	authStore := setupAuthStore(db)
 	sessionStore := setupSessionsStore(db)
 	actorsStore := setupActorsStore(db)
+	articlesStore := setupArticleStore(db)
 	keyStore := setupKeyStore(db)
 
 	// Setup services.
 	actors := setupActorsService(actorsStore, keyStore, tm)
 	auth := setupAuth(authStore, sessionStore, actors, tm)
+	articles := setupArticles(articlesStore, tm)
 
 	// Setup handlers.
+	articlesHandler := setupArticlesHandler(articles)
 	authHandler := setupAuthHandler(auth)
 
 	// Wire HTTP routing and handlers.
 	mux := http.NewServeMux()
 	authHandler.RegisterRoutes(mux)
+	articlesHandler.RegisterRoutes(mux)
 
 	// Handler for serving static files such as CSS and Javascript.
 	fileServer := http.FileServer(http.Dir("./static"))

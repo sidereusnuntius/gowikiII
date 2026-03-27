@@ -2,8 +2,12 @@ package articles
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -11,22 +15,31 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 type ArticleService struct {
-	Store     Archive
+	Store     ArticleStore
 	TxManager *txdb.TxManager
 	Diffs     *diffmatchpatch.DiffMatchPatch
 }
 
-func New(store Archive, manager *txdb.TxManager) *ArticleService {
+func New(store ArticleStore, manager *txdb.TxManager) *ArticleService {
 	return &ArticleService{
 		Store:     store,
 		TxManager: manager,
+		Diffs: diffmatchpatch.New(),
 	}
 }
 
-func (as *ArticleService) LocalEdit(ctx context.Context, userID string, in model.ArticleEdit) error {
+func (as *ArticleService) ArticleContent(ctx context.Context, req *model.ArticleRequest) (model.ArticleContent, error) {
+	normalizeRequest(req)
+
+	content, err := as.Store.GetArticleContent(ctx, req)
+	return content, err
+}
+
+func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) error {
 	normalizeEdit(&in)
 	// Validate
 
@@ -35,13 +48,17 @@ func (as *ArticleService) LocalEdit(ctx context.Context, userID string, in model
 		article, err := as.Store.GetArticle(ctx, in.Slug, in.Host)
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
-				return err
+				return fmt.Errorf("as.Store.GetArticle(): %w", err)
 			}
 
 			article, err = as.CreateArticle(ctx, in.Slug, in.Host)
 			if err != nil {
-				return err
+				return fmt.Errorf("as.CreateArticle(): %w", err)
 			}
+			wikilog.Logger.Debug().
+				Str("slug", article.Slug).
+				Str("host", article.Host).
+				Msg("created new article")
 			new = true
 		}
 
@@ -56,18 +73,16 @@ func (as *ArticleService) LocalEdit(ctx context.Context, userID string, in model
 			content, err = as.Store.GetArticleContent(ctx, &req)
 			// There is already a localized version of this article in the provided language,
 			// so we update it.
-			if err == nil {
-				return as.UpdateArticle(ctx, content, in)
+			if err != nil &&  !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("as.Store.GetArticleContent(): %w", err)
 			}
-
-			if !errors.Is(err, sql.ErrNoRows) {
-				return err
-			}
+		} else {
+			populateEmptyLocalizedArticle(&content, &article, &in)
 		}
-
-		return nil
+		return as.EditArticleContent(ctx, content, in)
 	})
 
+	return err
 }
 
 // CreateArticle creates an article object, generating a new IRI for it, and saves it in the data store.
@@ -89,6 +104,10 @@ func (as *ArticleService) CreateArticle(ctx context.Context, slug, host string) 
 		// Restricted: ,
 	}
 
+	wikilog.Logger.Debug().
+		Str("slug", article.Slug).
+		Str("host", article.Host).
+		Msg("saving article")
 	err := as.Store.SaveArticle(ctx, &article)
 	if err != nil {
 		return model.Article{}, err
@@ -105,43 +124,42 @@ func (as *ArticleService) UpdateArticle(ctx context.Context, content model.Artic
 // it is assumed to be an existing localized article, and so this method will apply the edit to the localized article and persist it.
 // Otherwise, it creates the localized article. In both cases it creates a new revision.
 func (as *ArticleService) EditArticleContent(ctx context.Context, content model.ArticleContent, edit model.ArticleEdit) error {
+	var err error
 	diff := as.Diffs.DiffMain(content.Content, edit.NewContent, false)
 	delta := as.Diffs.DiffToDelta(diff)
-	
+
+	content.Content = edit.NewContent
+
 	if content.ID != 0 {
-		
-	}
-}
-
-func (as *ArticleService) LocalCreate(ctx context.Context, in model.ArticleEdit) error {
-	published := time.Now().UTC()
-	iri := config.Config.URL.JoinPath("a", in.Slug)
-
-	article := model.Article{
-		Slug:      in.Slug,
-		Host:      config.Config.Host,
-		IRI:       iri.String(),
-		Published: published,
+		err = as.Store.UpdateLocalizedArticle(ctx, &content)
+	} else {
+		err = as.Store.SaveArticleContent(ctx, &content)
 	}
 
-	err := as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
-		err := as.Store.SaveArticle(ctx, &article)
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		// content := model.ArticleContent{
-		// 		Article: article,
-		// 		Lang: in.Lang,
-		// 		// Title: ,
-		// 		Content: in.NewContent,
-		// 		// Summary: ,
-		// 		URL: ,
-		// 		Published: ,
-		// 		Updated: ,
-		// 		Fetched: ,
-		// }
-	})
+	buf := make([]byte, 24)
+	rand.Read(buf)
+	code := base64.URLEncoding.EncodeToString(buf)
+
+	iri, _ := url.Parse(content.Article.IRI)
+	iri = iri.JoinPath("edits", code)
+
+	revision := model.Revision{
+		Code: code,
+		IRI: iri.String(),
+		Diff: delta,
+		Summary: edit.Summary,
+		// Prev: 0,
+		ArticleID: content.Article.ID,
+		Published: time.Now().UTC(),
+		ActorID: edit.ActorID,
+		ActorIRI: edit.ActorIRI,
+	}
+
+	return as.Store.SaveRevision(ctx, &revision)
 }
 
 func normalizeEdit(in *model.ArticleEdit) {
@@ -155,5 +173,30 @@ func normalizeEdit(in *model.ArticleEdit) {
 		in.Host = strings.ToLower(
 			strings.TrimSpace(in.Host),
 		)
+	}
+}
+
+func normalizeRequest(req *model.ArticleRequest) {
+	req.Slug = strings.ToLower(
+		strings.TrimSpace(req.Slug),
+	)
+
+
+	if len(req.Host) == 0 {
+		req.Host = config.Config.Host
+	} else {
+		req.Host = strings.ToLower(
+			strings.TrimSpace(req.Host),
+		)
+	}
+}
+
+func populateEmptyLocalizedArticle(content *model.ArticleContent, article *model.Article, edit *model.ArticleEdit) {
+	*content = model.ArticleContent{
+			Article: *article,
+			// Lang: ,
+			// Title: ,
+			URL: "/a/" + article.Slug,
+			Published: time.Now().UTC(),
 	}
 }

@@ -68,8 +68,11 @@ func (p *Page) GetString(name string) string {
 	return p.req.FormValue(name)
 }
 
-func (p *Page) AddTemplate(path string) {
-	p.subtemplates = append(p.subtemplates, TemplatePath(path))
+func (p *Page) AddTemplate(paths ...string) {
+	for i := range paths {
+		paths[i] = TemplatePath(paths[i])
+	}
+	p.subtemplates = append(p.subtemplates, paths...)
 }
 
 func (p *Page) Write(text string) error {
@@ -148,7 +151,9 @@ func (p *Page) Render(path string) {
 			l.Str("page title", p.Content.Title)
 		}
 
-		tmpl, err := template.ParseFiles(TemplatePath(path))
+		p.subtemplates = append(p.subtemplates, TemplatePath(path))
+
+		tmpl, err := template.ParseFiles(p.subtemplates...)
 		if err != nil {
 			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to parse template file")
 		}

@@ -3,6 +3,7 @@ package articlesql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -27,6 +28,12 @@ const (
 	last_fetched
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	RETURNING id`
+	updateArticleContent = `UPDATE localized_articles SET
+		content = ?,
+		summary = ?,
+		updated = ?,
+		last_fetched = ?
+	WHERE id = ?`
 	insertRevision = `INSERT INTO revisions (
 		iri,
 		code,
@@ -36,7 +43,7 @@ const (
 		localized_article_id,
 		published,
 		actor_internal_id,
-		actor_iri,
+		actor_iri
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
 
 	// Article query components
@@ -86,6 +93,17 @@ func New(db *sql.DB) *ArticleStore {
 	}
 }
 
+func (as *ArticleStore) UpdateLocalizedArticle(ctx context.Context, content *model.ArticleContent) error {
+	_, err := txdb.GetExecutor(ctx, as.DB).ExecContext(ctx, updateArticleContent,
+		content.Content,
+		sqlhelpers.NullableString(content.Summary),
+		sqlhelpers.NullableTimeUnix(content.Updated),
+		sqlhelpers.NullableTimeUnix(content.Fetched),
+		content.ID,
+	)
+	return err
+}
+
 func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (model.Article, error) {
 	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectArticle, slug, host)
 
@@ -130,12 +148,12 @@ func (as *ArticleStore) SaveArticle(ctx context.Context, article *model.Article)
 		article.Published.Unix(),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("SaveArticle(): %w", err)
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("SaveArticle(): %w", err)
 	}
 
 	article.ID = id
@@ -218,12 +236,12 @@ func (as *ArticleStore) SaveArticleContent(ctx context.Context, content *model.A
 		sqlhelpers.NullableTimeUnix(content.Fetched),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("SaveArticleContent(): %w", err)
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("res.LastInsertId(): %w", err)
 	}
 
 	content.ID = id

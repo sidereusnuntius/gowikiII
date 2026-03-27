@@ -22,6 +22,10 @@ a:visited {
     padding: 0px;
 }
 
+#page-container > header {
+    position: relative;
+}
+
 .form-field input {
     height: 3ch;
     border: 1px solid black;
@@ -73,4 +77,26 @@ input:focus {
 .form-footer {
     display: flex;
     justify-content: center;
+}
+
+.text-edit {
+    width: 100%;
+    height: 64ch;
+    resize: none;
+}
+
+#article-editor > footer {
+    display: flex;
+    flex-direction: column;
+}
+
+#main-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 8px;
 }

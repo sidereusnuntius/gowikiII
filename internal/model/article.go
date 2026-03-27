@@ -50,11 +50,14 @@ type ArticleRequest struct {
 }
 
 type ArticleEdit struct {
+	ActorID int64
+	ActorIRI string
 	Slug       string
 	Host       string
 	IRI        string
 	Lang       string
 	NewContent string
+	Summary string
 	// LastEdit is the timestamp of the last revision of an article at the moment in which the user started editing it.
 	// This is used when an edit happens between the user starting to edit an article and trying to save their changes.
 	LastEdit time.Time
