@@ -3,6 +3,7 @@ package articles
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
@@ -21,6 +22,28 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /a/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
 	mux.HandleFunc("POST /a/{slug}/edit", authhelpers.Authenticated(handler.Submit))
 	mux.HandleFunc("POST /preview", authhelpers.Authenticated(handler.Preview))
+	mux.HandleFunc("GET /search", handler.Search)
+}
+
+func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
+	p, err := render.Init(w, r)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("Search()")
+		return
+	}
+
+	query := p.GetString("query")
+	articles, err := h.ArticleService.SearchArticles(p.Ctx, query)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.SearchArticles()")
+		p.HandleError(err)
+		return
+	}
+	fmt.Println(articles)
+
+	p.Content.Data = articles
+
+	p.Render("search/results.html")
 }
 
 func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
@@ -43,10 +66,10 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Article{
-			Slug: content.Article.Slug,
-			Host: content.Article.Host,
-			Content: content.Content,
-			ArticleHeader: articleHeader(slug),
+		Slug:          content.Article.Slug,
+		Host:          content.Article.Host,
+		Content:       content.Content,
+		ArticleHeader: articleHeader(slug),
 	}
 
 	p.Content.Data = view
@@ -74,13 +97,13 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Editor{
-			Slug: content.Article.Slug,
-			Host: content.Article.Host,
-			Content: content.Content,
-			EditSummary: "",
-			LastModified: content.Updated,
-			ActionURL: "/a/" + slug + "/edit",
-			ArticleHeader: articleHeader(content.Article.Slug),
+		Slug:          content.Article.Slug,
+		Host:          content.Article.Host,
+		Content:       content.Content,
+		EditSummary:   "",
+		LastModified:  content.Updated,
+		ActionURL:     "/a/" + slug + "/edit",
+		ArticleHeader: articleHeader(content.Article.Slug),
 	}
 
 	p.Content.Title = view.Slug
@@ -113,13 +136,13 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	summary := p.GetString("summary")
 
 	edit := model.ArticleEdit{
-			ActorID: p.Content.Session.User.ID,
-			Slug: slug,
-			// Host: ,
-			// IRI: ,
-			// Lang: ,
-			NewContent: content,
-			Summary: summary,
+		ActorID: p.Content.Session.User.ID,
+		Slug:    slug,
+		// Host: ,
+		// IRI: ,
+		// Lang: ,
+		NewContent: content,
+		Summary:    summary,
 	}
 	if err = h.ArticleService.LocalEdit(p.Ctx, edit); err != nil {
 		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.LocalEdit()")
@@ -135,6 +158,6 @@ func articleHeader(slug string) view.ArticleHeader {
 	return view.ArticleHeader{
 		ArticleURL: url,
 		HistoryURL: url + "/history",
-		EditURL: url + "/edit",
+		EditURL:    url + "/edit",
 	}
 }

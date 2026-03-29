@@ -1,0 +1,9 @@
+{{ define "content" }}
+<ul id="search-results">
+    {{ range .Data }}
+    <li>
+        <a href="/a/{{ .Slug }}">{{ .Slug }}</a>
+    </li>
+    {{ end }}
+</ul>
+{{ end }}

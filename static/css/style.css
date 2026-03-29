@@ -48,6 +48,23 @@ form > .form-field + .form-field {
     margin-top: 20px;
 }
 
+#main-search {
+    flex: 1;
+    align-self: flex-start;
+    margin-left: 10px;
+}
+
+#main-search > input {
+    /*flex: 1;*/
+}
+
+#main-search > button {
+    margin: 0;
+    padding: 0;
+    background-color: white;
+    color: black;
+}
+
 button[type=submit] {
       border: none;
       padding: 4px 8px;
@@ -57,6 +74,7 @@ button[type=submit] {
       padding: 10px 20px;
       font-weight: 600;
 }
+
 
 input {
     padding: 0.2em 0.7em;

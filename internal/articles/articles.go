@@ -14,22 +14,46 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/model"
+	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 type ArticleService struct {
+	Search *search.Search
 	Store     ArticleStore
 	TxManager *txdb.TxManager
 	Diffs     *diffmatchpatch.DiffMatchPatch
 }
 
-func New(store ArticleStore, manager *txdb.TxManager) *ArticleService {
+func New(store ArticleStore, manager *txdb.TxManager, search *search.Search) *ArticleService {
 	return &ArticleService{
+		Search: search,
 		Store:     store,
 		TxManager: manager,
 		Diffs: diffmatchpatch.New(),
 	}
+}
+
+func (as *ArticleService) SearchArticles(ctx context.Context, query string) ([]model.Article, error) {
+	res, err := as.Search.SearchArticles(query)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, res.Hits.Len())
+	for _, h := range res.Hits {
+		fmt.Println(h.ID)
+		ids = append(ids, h.ID)
+	}
+	fmt.Println(ids)
+
+	results, err := as.Store.SearchArticles(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 func (as *ArticleService) ArticleContent(ctx context.Context, req *model.ArticleRequest) (model.ArticleContent, error) {
@@ -79,7 +103,13 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 		} else {
 			populateEmptyLocalizedArticle(&content, &article, &in)
 		}
-		return as.EditArticleContent(ctx, content, in)
+
+		err = as.EditArticleContent(ctx, content, in)
+		if err != nil {
+			return fmt.Errorf("as.EditArticleContent(): %w", err)
+		}
+
+		return as.Search.IndexArticle(&content)
 	})
 
 	return err

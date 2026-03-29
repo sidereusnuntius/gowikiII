@@ -2,6 +2,11 @@ package model
 
 import "time"
 
+type SearchResult struct {
+	URL string
+	Title string
+}
+
 type Article struct {
 	ID             int64
 	Slug           string

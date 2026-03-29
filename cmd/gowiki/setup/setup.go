@@ -7,6 +7,7 @@ import (
 
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	"github.com/sidereusnuntius/gowiki/internal/config"
+	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
 
@@ -18,7 +19,7 @@ type Wiki struct {
 	Server      *http.Server
 }
 
-func SetupWiki(db *sql.DB) Wiki {
+func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	// Transaction manager.
 	tm := &txdb.TxManager{
 		DB: db,
@@ -34,7 +35,7 @@ func SetupWiki(db *sql.DB) Wiki {
 	// Setup services.
 	actors := setupActorsService(actorsStore, keyStore, tm)
 	auth := setupAuth(authStore, sessionStore, actors, tm)
-	articles := setupArticles(articlesStore, tm)
+	articles := setupArticles(articlesStore, tm, search)
 
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles)

@@ -5,7 +5,10 @@ function onChangeInputHandler(event) {
   }
   const input = event.target;
   input.removeAttribute('aria-invalid');
-  document.querySelector(`.error-msg[for=${input.id}]`).textContent = '';
+  const label = document.querySelector(`.error-msg[for=${input.id}]`);
+  if (label) {
+    label.textContent = '';
+  }
 }
 
 function addEventListeners() {

@@ -4,6 +4,16 @@
         <ul>
             <li><a href="/">Home</a></li>
         </ul>
+        <form
+            id="main-search"
+            action="/search"
+            fx-action="/search"
+            fx-method="GET"
+            fx-target="#content"
+        >
+            <input id="query" name="query" type="text" required>
+            <button type="submit">Search</button>
+            </form>
         <ul>
             {{ if .Authenticated }}
             <li><a href="/">{{.Session.User.Username}}</a></li>

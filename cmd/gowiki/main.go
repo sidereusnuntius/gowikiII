@@ -8,6 +8,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/cmd/gowiki/setup"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/db"
+	"github.com/sidereusnuntius/gowiki/internal/search"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
@@ -22,6 +23,7 @@ func main() {
 	db, err := db.Open(ctx, dbConfig)
 	if err != nil {
 		wikilog.Logger.Fatal().Err(err).Msg("failed to connect to database")
+		return
 	}
 
 	defer func() {
@@ -31,7 +33,16 @@ func main() {
 		}
 	}()
 
-	wiki := setup.SetupWiki(db)
+	search, err := search.Start()
+	if err != nil {
+		wikilog.Logger.Fatal().Err(err).Msg("search.Start()")
+		return
+	}
+	defer func() {
+		search.Close()
+	}()
+
+	wiki := setup.SetupWiki(db, search)
 	wikilog.Logger.Info().
 		Int("port", config.Config.Port).
 		Str("address", config.Config.Host).

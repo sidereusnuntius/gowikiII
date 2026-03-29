@@ -14,6 +14,7 @@ import (
 
 const (
 	selectArticle        = "SELECT id, slug, host, iri, published, federated_edits, restricted_edits FROM articles WHERE slug = ? AND host = ?"
+	selectArticles       = "SELECT id, slug, host, iri FROM articles where iri IN (%s)"
 	articleExists        = "SELECT EXISTS(SELECT 1 FROM articles WHERE slug = ? AND host = ?)"
 	insertArticle        = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
 	insertArticleContent = `INSERT INTO localized_articles (
@@ -91,6 +92,49 @@ func New(db *sql.DB) *ArticleStore {
 	return &ArticleStore{
 		DB: db,
 	}
+}
+
+func (as *ArticleStore) SearchArticles(ctx context.Context, iris []string) ([]model.Article, error) {
+	var builder strings.Builder
+	for i, iri := range iris {
+		builder.WriteRune('\'')
+		builder.WriteString(iri)
+		builder.WriteRune('\'')
+		if i != len(iris)-1 {
+			builder.WriteRune(',')
+		}
+	}
+	fmt.Println(builder.String())
+	rows, err := txdb.GetExecutor(ctx, as.DB).QueryContext(ctx,
+		fmt.Sprintf(selectArticles, builder.String()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]model.Article, 0)
+	var article model.Article
+	for rows.Next() {
+		err := rows.Scan(
+			&article.ID,
+			&article.Slug,
+			&article.Host,
+			&article.IRI,
+		)
+		fmt.Println("article:", article)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, article)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	fmt.Println(result)
+
+	return result, nil
 }
 
 func (as *ArticleStore) UpdateLocalizedArticle(ctx context.Context, content *model.ArticleContent) error {
