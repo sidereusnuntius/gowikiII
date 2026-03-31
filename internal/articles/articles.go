@@ -20,7 +20,7 @@ import (
 )
 
 type ArticleService struct {
-	Search *search.Search
+	Search    *search.Search
 	Store     ArticleStore
 	TxManager *txdb.TxManager
 	Diffs     *diffmatchpatch.DiffMatchPatch
@@ -28,10 +28,10 @@ type ArticleService struct {
 
 func New(store ArticleStore, manager *txdb.TxManager, search *search.Search) *ArticleService {
 	return &ArticleService{
-		Search: search,
+		Search:    search,
 		Store:     store,
 		TxManager: manager,
-		Diffs: diffmatchpatch.New(),
+		Diffs:     diffmatchpatch.New(),
 	}
 }
 
@@ -97,14 +97,14 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 			content, err = as.Store.GetArticleContent(ctx, &req)
 			// There is already a localized version of this article in the provided language,
 			// so we update it.
-			if err != nil &&  !errors.Is(err, sql.ErrNoRows) {
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("as.Store.GetArticleContent(): %w", err)
 			}
 		} else {
 			populateEmptyLocalizedArticle(&content, &article, &in)
 		}
 
-		err = as.EditArticleContent(ctx, content, in)
+		err = as.EditArticleContent(ctx, &content, in)
 		if err != nil {
 			return fmt.Errorf("as.EditArticleContent(): %w", err)
 		}
@@ -153,7 +153,7 @@ func (as *ArticleService) UpdateArticle(ctx context.Context, content model.Artic
 // EditArticleContent handles creation and modification of localized article instances. If the provided ArticleContent is not the zero value,
 // it is assumed to be an existing localized article, and so this method will apply the edit to the localized article and persist it.
 // Otherwise, it creates the localized article. In both cases it creates a new revision.
-func (as *ArticleService) EditArticleContent(ctx context.Context, content model.ArticleContent, edit model.ArticleEdit) error {
+func (as *ArticleService) EditArticleContent(ctx context.Context, content *model.ArticleContent, edit model.ArticleEdit) error {
 	var err error
 	diff := as.Diffs.DiffMain(content.Content, edit.NewContent, false)
 	delta := as.Diffs.DiffToDelta(diff)
@@ -161,9 +161,9 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content model.
 	content.Content = edit.NewContent
 
 	if content.ID != 0 {
-		err = as.Store.UpdateLocalizedArticle(ctx, &content)
+		err = as.Store.UpdateLocalizedArticle(ctx, content)
 	} else {
-		err = as.Store.SaveArticleContent(ctx, &content)
+		err = as.Store.SaveArticleContent(ctx, content)
 	}
 
 	if err != nil {
@@ -178,15 +178,15 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content model.
 	iri = iri.JoinPath("edits", code)
 
 	revision := model.Revision{
-		Code: code,
-		IRI: iri.String(),
-		Diff: delta,
+		Code:    code,
+		IRI:     iri.String(),
+		Diff:    delta,
 		Summary: edit.Summary,
 		// Prev: 0,
 		ArticleID: content.Article.ID,
 		Published: time.Now().UTC(),
-		ActorID: edit.ActorID,
-		ActorIRI: edit.ActorIRI,
+		ActorID:   edit.ActorID,
+		ActorIRI:  edit.ActorIRI,
 	}
 
 	return as.Store.SaveRevision(ctx, &revision)
@@ -211,7 +211,6 @@ func normalizeRequest(req *model.ArticleRequest) {
 		strings.TrimSpace(req.Slug),
 	)
 
-
 	if len(req.Host) == 0 {
 		req.Host = config.Config.Host
 	} else {
@@ -223,10 +222,10 @@ func normalizeRequest(req *model.ArticleRequest) {
 
 func populateEmptyLocalizedArticle(content *model.ArticleContent, article *model.Article, edit *model.ArticleEdit) {
 	*content = model.ArticleContent{
-			Article: *article,
-			// Lang: ,
-			// Title: ,
-			URL: "/a/" + article.Slug,
-			Published: time.Now().UTC(),
+		Article: *article,
+		// Lang: ,
+		// Title: ,
+		URL:       "/a/" + article.Slug,
+		Published: time.Now().UTC(),
 	}
 }

@@ -3,7 +3,7 @@ package model
 import "time"
 
 type SearchResult struct {
-	URL string
+	URL   string
 	Title string
 }
 
@@ -20,16 +20,16 @@ type Article struct {
 }
 
 type ArticleContent struct {
-	Article   Article
-	ID        int64
-	Lang      string
-	Title     string
-	Content   string
-	Summary   string
-	URL       string
-	Published time.Time
-	Updated   time.Time
-	Fetched   time.Time
+	Article   Article   `json:"article"`
+	ID        int64     `json:"id"`
+	Lang      string    `json:"lang"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	Summary   string    `json:"summary"`
+	URL       string    `json:"url"`
+	Published time.Time `json:"published"`
+	Updated   time.Time `json:"updated"`
+	Fetched   time.Time `json:"fetched"`
 }
 
 type Revision struct {
@@ -55,14 +55,14 @@ type ArticleRequest struct {
 }
 
 type ArticleEdit struct {
-	ActorID int64
-	ActorIRI string
+	ActorID    int64
+	ActorIRI   string
 	Slug       string
 	Host       string
 	IRI        string
 	Lang       string
 	NewContent string
-	Summary string
+	Summary    string
 	// LastEdit is the timestamp of the last revision of an article at the moment in which the user started editing it.
 	// This is used when an edit happens between the user starting to edit an article and trying to save their changes.
 	LastEdit time.Time

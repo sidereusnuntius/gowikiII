@@ -18,7 +18,7 @@ type Search struct {
 }
 
 func Start() (*Search, error) {
-	mapping := bleve.NewIndexMapping()
+	articleMapping := articleIndexMapping()
 
 	var articlesIndex bleve.Index
 	articlesIndexPath := filepath.Join(searchIndexesPath, "articles.bleve")
@@ -29,7 +29,7 @@ func Start() (*Search, error) {
 		}
 
 		wikilog.Logger.Debug().Msgf("creating index at %s", articlesIndexPath)
-		articlesIndex, err = bleve.New(articlesIndexPath, mapping)
+		articlesIndex, err = bleve.New(articlesIndexPath, articleMapping)
 		if err != nil {
 			return nil, fmt.Errorf("bleve.New(): failed to create articles index:  %w", err)
 		}
@@ -55,7 +55,7 @@ func (s *Search) Close() {
 	}
 }
 func (s *Search) SearchArticles(query string) (*bleve.SearchResult, error) {
-	q := bleve.NewMatchPhraseQuery(query)
+	q := bleve.NewQueryStringQuery(query)
 	req := bleve.NewSearchRequest(q)
 
 	return s.articles.Search(req)
