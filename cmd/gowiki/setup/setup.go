@@ -7,16 +7,18 @@ import (
 
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	"github.com/sidereusnuntius/gowiki/internal/config"
+	"github.com/sidereusnuntius/gowiki/internal/defaulthandler"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
 
 type Wiki struct {
-	DB          *sql.DB
-	TxManager   *txdb.TxManager
-	AuthHandler *auth.Handler
-	Mux         *http.ServeMux
-	Server      *http.Server
+	DB             *sql.DB
+	TxManager      *txdb.TxManager
+	AuthHandler    *auth.Handler
+	DefaultHandler *defaulthandler.DefaultHandler
+	Mux            *http.ServeMux
+	Server         *http.Server
 }
 
 func SetupWiki(db *sql.DB, search *search.Search) Wiki {
@@ -40,9 +42,11 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles)
 	authHandler := setupAuthHandler(auth)
+	defaultHandler := defaulthandler.New(articles)
 
 	// Wire HTTP routing and handlers.
 	mux := http.NewServeMux()
+	defaultHandler.RegisterRoutes(mux)
 	authHandler.RegisterRoutes(mux)
 	articlesHandler.RegisterRoutes(mux)
 
@@ -56,10 +60,11 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	}
 
 	return Wiki{
-		DB:          db,
-		TxManager:   tm,
-		AuthHandler: authHandler,
-		Mux:         mux,
-		Server:      server,
+		DB:             db,
+		TxManager:      tm,
+		AuthHandler:    authHandler,
+		DefaultHandler: defaultHandler,
+		Mux:            mux,
+		Server:         server,
 	}
 }

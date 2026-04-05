@@ -7,21 +7,42 @@
     method="POST"
     fx-action="{{ .Data.ActionURL }}"
     fx-method="POST"
-    fx-target="#content">
-        <textarea id="article-text" class="text-edit" name="content">{{ .Data.Content }}</textarea>
-        <footer>
-            <input id="summary" name="summary" type="text">
-            <div>
-                <button
-                    type="submit"
-                    formaction="/preview"
-                    fx-action="/preview"
-                    fx-method="POST"
-                    fx-target="#preview"
-                    fx-swap="innerHTML">Preview</button>
-                <button type="submit">Publish</button>
-            </div>
-        </footer>
+    fx-target="#content"
+    fx-swap="innerHTML"
+>
+    <div>
+        <label for="article-text">Content of the article</label>
+        <p id="textarea-description">
+            This should be a more description of the next field.
+        </p>
+        <textarea
+            id="article-text"
+            class="text-edit"
+            name="content"
+            aria-describedby="textarea-description"
+        >
+{{ .Data.Content }}</textarea
+        >
+    </div>
+    <footer>
+        <div id="summary">
+            <label for="summary">Summary</label>
+            <input id="summary" name="summary" type="text" />
+        </div>
+        <div>
+            <button
+                type="submit"
+                formaction="/preview"
+                fx-action="/preview"
+                fx-method="POST"
+                fx-target="#preview"
+                fx-swap="innerHTML"
+            >
+                Preview
+            </button>
+            <button type="submit">Publish</button>
+        </div>
+    </footer>
 </form>
 
 <output id="preview" for="article-editor" form="article-editor"></output>

@@ -17,18 +17,7 @@ type Handler struct {
 	SessionStore SessionStore
 }
 
-// Temporary handler that only exists for testing authentication.
-func (handler *Handler) Temp(w http.ResponseWriter, r *http.Request) {
-	p, err := render.Init(w, r)
-	if err != nil {
-		wikilog.Logger.Error().Err(err).Msg("failed to initialize request data")
-	}
-
-	p.Render("main.html")
-}
-
 func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /", handler.Temp)
 	mux.HandleFunc("POST /register", handler.RegisterAction)
 	mux.HandleFunc("GET /register", handler.Register)
 	mux.HandleFunc("GET /login", handler.Login)

@@ -3,7 +3,6 @@ package articles
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
@@ -71,7 +71,7 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 	err := as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
 		article, err := as.Store.GetArticle(ctx, in.Slug, in.Host)
 		if err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
+			if !errors.Is(err, wikierr.ErrNotFound) {
 				return fmt.Errorf("as.Store.GetArticle(): %w", err)
 			}
 
@@ -97,7 +97,7 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 			content, err = as.Store.GetArticleContent(ctx, &req)
 			// There is already a localized version of this article in the provided language,
 			// so we update it.
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			if err != nil && !errors.Is(err, wikierr.ErrNotFound) {
 				return fmt.Errorf("as.Store.GetArticleContent(): %w", err)
 			}
 		} else {
@@ -190,6 +190,21 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 	}
 
 	return as.Store.SaveRevision(ctx, &revision)
+}
+
+// Homepage finds the homepage of the given wiki, if it exists. We expect each wiki to have a home article,
+// which contains the text to be displayed in the home page. If wiki is empty, then the homepage of the local
+// wiki is returned.
+func (as *ArticleService) Homepage(ctx context.Context, wiki, locale string) (model.ArticleContent, error) {
+	if len(wiki) == 0 {
+		wiki = config.Config.Host
+	}
+
+	req := model.ArticleRequest{
+		Slug: "home",
+		Host: wiki,
+	}
+	return as.ArticleContent(ctx, &req)
 }
 
 func normalizeEdit(in *model.ArticleEdit) {

@@ -6,6 +6,7 @@
     margin: 0;
     padding: 0;
     font-family: "Monospace";
+    box-sizing: border-box;
 }
 
 a,
@@ -33,7 +34,8 @@ a:visited {
 
 /* FORMS */
 
-.form-field {
+.form-field,
+#summary {
     display: flex;
     flex-direction: column;
 }
@@ -65,16 +67,15 @@ form > .form-field + .form-field {
     color: black;
 }
 
-button[type=submit] {
-      border: none;
-      padding: 4px 8px;
-      margin-top: 10px;
-      background-color: #00f;
-      color: white;
-      padding: 10px 20px;
-      font-weight: 600;
+button[type="submit"] {
+    border: none;
+    padding: 4px 8px;
+    margin-top: 10px;
+    background-color: #00f;
+    color: white;
+    padding: 10px 20px;
+    font-weight: 600;
 }
-
 
 input {
     padding: 0.2em 0.7em;
@@ -90,7 +91,6 @@ input:focus {
     border-width: 2px;
     outline: none;
 }
-
 
 .form-footer {
     display: flex;

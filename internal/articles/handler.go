@@ -1,7 +1,6 @@
 package articles
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
 	"github.com/sidereusnuntius/gowiki/internal/view"
+	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
@@ -91,7 +91,7 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 		Slug: slug,
 	}
 	content, err := h.ArticleService.ArticleContent(p.Ctx, &req)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, wikierr.ErrNotFound) {
 		wikilog.Logger.Error().Err(err).Msg("handler.ArticleService.ArticleContent()")
 		return
 	}
@@ -150,7 +150,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte("success!"))
+	h.Read(w, r)
 }
 
 func articleHeader(slug string) view.ArticleHeader {

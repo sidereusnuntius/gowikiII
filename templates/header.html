@@ -2,7 +2,16 @@
 <header>
     <nav id="main-header">
         <ul>
-            <li><a href="/">Home</a></li>
+            <li>
+                <a
+                    href="/"
+                    fx-action="/"
+                    fx-target="#content"
+                    fx-method="GET"
+                    fx-swap="innerHTML"
+                    >Home</a
+                >
+            </li>
         </ul>
         <form
             id="main-search"
@@ -10,20 +19,23 @@
             fx-action="/search"
             fx-method="GET"
             fx-target="#content"
+            fx-swap="innerHTML"
         >
-            <input id="query" name="query" type="text" required>
+            <input id="query" name="query" type="text" required />
             <button type="submit">Search</button>
-            </form>
+        </form>
         <ul>
             {{ if .Authenticated }}
             <li><a href="/">{{.Session.User.Username}}</a></li>
-            <li><a
-                href="/logout"
-                fx-action="/logout"
-                fx-method="POST"
-                fx-target="#page-container"
-                fx-swap="innerHTML"
-                >Logout</a>
+            <li>
+                <a
+                    href="/logout"
+                    fx-action="/logout"
+                    fx-method="POST"
+                    fx-target="#page-container"
+                    fx-swap="innerHTML"
+                    >Logout</a
+                >
             </li>
             {{ else }}
             <li>
@@ -32,7 +44,9 @@
                     fx-action="/login"
                     fx-method="GET"
                     fx-target="#content"
-                    fx-swap="innerHTML">Login</a>
+                    fx-swap="innerHTML"
+                    >Login</a
+                >
             </li>
             <li>
                 <a
@@ -40,7 +54,9 @@
                     fx-action="/register"
                     fx-method="GET"
                     fx-target="#content"
-                    fx-swap="innerHTML">Register</a>
+                    fx-swap="innerHTML"
+                    >Register</a
+                >
             </li>
             {{ end }}
         </ul>

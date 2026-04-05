@@ -164,7 +164,7 @@ func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (mode
 		&article.Restricted,
 	)
 	if err != nil {
-		return model.Article{}, err
+		return model.Article{}, sqlhelpers.HandleErr(err)
 	}
 
 	if published.Valid {
@@ -245,7 +245,7 @@ func (as *ArticleStore) GetArticleContent(ctx context.Context, req *model.Articl
 		&fetched,
 	)
 	if err != nil {
-		return article, err
+		return article, sqlhelpers.HandleErr(err)
 	}
 
 	if title.Valid {
