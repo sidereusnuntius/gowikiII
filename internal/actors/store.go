@@ -12,4 +12,5 @@ type Store interface {
 	// exists and, if not, persists in the database. In both cases t returns the id
 	//of the inserted shared inbox.
 	CreateSharedInboxIfNotExists(ctx context.Context, uri string) (int64, error)
+	GetActorByHandle(ctx context.Context, username, host string) (model.Actor, error)
 }

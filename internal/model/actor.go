@@ -18,7 +18,7 @@ type Actor struct {
 	Outbox        string
 	Followers     string
 	Following     string
-	PublicKey     *PublicKey
+	PublicKey     PublicKey
 	PrivateKey    []byte
 	URL           string
 	UserID        int64
@@ -33,11 +33,12 @@ const (
 )
 
 type PublicKey struct {
-	ID      int64
-	URI     string
-	OwnerID int64
-	Type    KeyType
-	Pem     []byte
+	ID       int64
+	URI      string
+	OwnerID  int64
+	OwnerIRI string
+	Type     KeyType
+	Pem      []byte
 }
 
 type PrivateKey struct {

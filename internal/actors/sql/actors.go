@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	sqlhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/sql"
 	"github.com/sidereusnuntius/gowiki/internal/model"
@@ -11,6 +12,34 @@ import (
 )
 
 const (
+	selectActorByHandle = `SELECT
+		a.id,
+		a.uri,
+		a.type,
+		a.username,
+		a.host,
+		a.name,
+		a.summary,
+
+		a.inbox,
+		a.outbox,
+		a.followers,
+		a.following,
+		a.url,
+		a.published,
+		a.updated,
+
+		a.shared_inbox,
+		si.uri,
+
+		pk.iri,
+		pk.type,
+		pk.key_pem
+	FROM actors a
+	LEFT JOIN public_keys pk ON pk.owner_id = a.id
+	LEFT JOIN shared_inboxes si ON si.id = a.shared_inbox
+	WHERE a.username = ? AND a.host = ?
+	LIMIT 1`
 	insertActor = `INSERT INTO actors (
 		user_id,
 		uri,
@@ -97,4 +126,95 @@ func (s *ActorsStore) SaveActor(ctx context.Context, actor *model.Actor) error {
 	actor.ID = id
 
 	return nil
+}
+
+func (s *ActorsStore) GetActorByHandle(ctx context.Context, username, host string) (model.Actor, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectActorByHandle,
+		username,
+		host,
+	)
+
+	var (
+		actor                                    model.Actor
+		displayName, summary                     sql.NullString
+		inbox, outbox, followers, following, url sql.NullString
+		published, updated                       sql.NullInt64
+		sharedInboxID                            sql.NullInt64
+		sharedInboxIRI, pkIri                    sql.NullString
+		pkType                                   sql.NullInt16
+		pkPem                                    []byte
+	)
+	err := row.Scan(
+		&actor.ID,
+		&actor.URI,
+		&actor.Type,
+		&actor.Username,
+		&actor.Host,
+
+		&displayName,
+		&summary,
+
+		&inbox,
+		&outbox,
+		&followers,
+		&following,
+		&url,
+
+		&published,
+		&updated,
+
+		&sharedInboxID,
+		&sharedInboxIRI,
+
+		&pkIri,
+		&pkType,
+		&pkPem,
+	)
+
+	if err != nil {
+		return model.Actor{}, sqlhelpers.HandleErr(err)
+	}
+
+	if displayName.Valid {
+		actor.DisplayName = displayName.String
+	}
+	if summary.Valid {
+		actor.Summary = summary.String
+	}
+
+	if inbox.Valid {
+		actor.Inbox = inbox.String
+	}
+	if outbox.Valid {
+		actor.Outbox = outbox.String
+	}
+	if followers.Valid {
+		actor.Followers = followers.String
+	}
+	if following.Valid {
+		actor.Following = following.String
+	}
+	if sharedInboxID.Valid && sharedInboxIRI.Valid {
+		actor.SharedInboxID = sharedInboxID.Int64
+		actor.SharedInbox = sharedInboxIRI.String
+	}
+
+	if published.Valid {
+		actor.Published = time.Unix(published.Int64, 0)
+	}
+	if updated.Valid {
+		actor.Updated = time.Unix(updated.Int64, 0)
+	}
+
+	if pkIri.Valid && pkType.Valid && len(pkPem) > 0 {
+		pk := model.PublicKey{
+			URI:  pkIri.String,
+			Type: model.KeyType(pkType.Int16),
+			Pem:  pkPem,
+		}
+
+		actor.PublicKey = pk
+	}
+
+	return actor, nil
 }

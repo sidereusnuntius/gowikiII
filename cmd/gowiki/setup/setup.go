@@ -8,6 +8,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/defaulthandler"
+	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
@@ -44,6 +45,8 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	authHandler := setupAuthHandler(auth)
 	defaultHandler := defaulthandler.New(articles)
 
+	activityPubHandler := setupActivityPubHandler(actors)
+
 	// Wire HTTP routing and handlers.
 	mux := http.NewServeMux()
 	defaultHandler.RegisterRoutes(mux)
@@ -54,9 +57,15 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	fileServer := http.FileServer(http.Dir("./static"))
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
+	// Mux for handling Activitypub requests
+	apMux := http.NewServeMux()
+	activityPubHandler.RegisterRoutes(apMux)
+
+	fedweb := httphelpers.FedWebMux(apMux, authHandler.SessionMiddleware(mux))
+
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.Config.Port),
-		Handler: authHandler.SessionMiddleware(mux),
+		Handler: fedweb,
 	}
 
 	return Wiki{

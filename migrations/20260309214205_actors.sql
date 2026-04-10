@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS actors (
 CREATE TABLE IF NOT EXISTS public_keys (
        id INTEGER PRIMARY KEY,
        iri TEXT NOT NULL,
-       owner_id INTEGER NOT NULL,
+       owner_id INTEGER,
        type INTEGER,
        key_pem BINARY NOT NULL,
 
