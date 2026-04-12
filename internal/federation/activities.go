@@ -22,4 +22,9 @@ func (f *Federation) ProcessPatch(ctx context.Context, activity activitystreams.
 		return err
 	}
 
+	if err = f.EnsureActor(ctx, patch.Actor); err != nil {
+		return err
+	}
+
+	return f.Articles.RemotePatch(ctx, patch)
 }

@@ -44,19 +44,23 @@ func GetIRI(name string, json *fastjson.Value) (string, error) {
 	return iri, nil
 }
 
+func GetTime(name string, json *fastjson.Value) (time.Time, bool, error) {
+	timeStr := string(json.GetStringBytes("published"))
+	if len(timeStr) == 0 {
+		var zero time.Time
+		return zero, false, nil
+	}
+
+	t, err := time.Parse(streams.Format, timeStr)
+	// TODO invalid time, expected format: <Format>
+
+	return t, err == nil, err
+}
+
 func (o *Object) Id() (string, error) {
 	return GetIRI("id", o.json)
 }
 
 func (o *Object) Published() (time.Time, bool, error) {
-	publishedStr := string(o.json.GetStringBytes("published"))
-	if len(publishedStr) == 0 {
-		var zero time.Time
-		return zero, false, nil
-	}
-
-	published, err := time.Parse(streams.Format, publishedStr)
-	// TODO invalid time, expected format: <Format>
-
-	return published, err == nil, err
+	return GetTime("published", o.json)
 }

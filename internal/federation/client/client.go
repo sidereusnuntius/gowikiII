@@ -8,8 +8,13 @@ import (
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/model"
-	"github.com/valyala/fastjson"
+	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 )
+
+type Client interface {
+	Fetch(ctx context.Context, url string) ([]byte, error)
+	FetchKey(ctx context.Context, keyId string) (model.PublicKey, error)
+}
 
 type ApClient struct {
 	Client *http.Client
@@ -23,37 +28,21 @@ func New() *ApClient {
 }
 
 func (ac *ApClient) FetchKey(ctx context.Context, keyId string) (model.PublicKey, error) {
-	value, err := ac.Fetch(ctx, keyId)
+	res, err := ac.Fetch(ctx, keyId)
 	if err != nil {
 		return model.PublicKey{}, err
 	}
 
-	key := value.Get("publicKey")
-	if key == nil {
-		return model.PublicKey{}, errors.New("key not found")
+	obj, err := activitystreams.ReadObject(res)
+	if err != nil {
+		return model.PublicKey{}, fmt.Errorf("activitystreams.ReadObject(): %w", err)
 	}
 
-	// TODO: what if owner is an object?
-	keyIRI := key.GetStringBytes("id")
-	owner := key.GetStringBytes("owner")
-	keyPem := key.GetStringBytes("publicKeyPem")
-
-	if len(keyIRI) == 0 || len(owner) == 0 || len(keyPem) == 0 {
-		return model.PublicKey{}, errors.New("invalid public key")
-	}
-
-	pub := model.PublicKey{
-		URI:      string(keyIRI),
-		OwnerIRI: string(owner),
-		Pem:      keyPem,
-		Type:     model.RSAKey, // TODO: change this
-	}
-
-	return pub, nil
+	return obj.PublicKey()
 }
 
 // TODO: sign GET requests.
-func (ac *ApClient) Fetch(ctx context.Context, url string) (*fastjson.Value, error) {
+func (ac *ApClient) Fetch(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -75,10 +64,5 @@ func (ac *ApClient) Fetch(ctx context.Context, url string) (*fastjson.Value, err
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	value, err := fastjson.ParseBytes(body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse response body: %w", err)
-	}
-
-	return value, nil
+	return body, nil
 }

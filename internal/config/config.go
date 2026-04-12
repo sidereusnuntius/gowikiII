@@ -17,16 +17,3 @@ type DbConfig struct {
 	Timeout int
 	// TODO: add other options
 }
-
-var Config WikiConfig
-
-func init() {
-	url, _ := url.Parse("http://localhost:8080")
-	Config = WikiConfig{
-		Name:        "testwiki",
-		Host:        "localhost:8080",
-		Port:        8080,
-		URL:         url,
-		SharedInbox: url.JoinPath("inbox").String(),
-	}
-}

@@ -8,12 +8,15 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/defaulthandler"
+	"github.com/sidereusnuntius/gowiki/internal/federation/client"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
 	"github.com/sidereusnuntius/gowiki/internal/search"
+	"github.com/sidereusnuntius/gowiki/internal/tests"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
 
 type Wiki struct {
+	Config         config.WikiConfig
 	DB             *sql.DB
 	TxManager      *txdb.TxManager
 	AuthHandler    *auth.Handler
@@ -23,10 +26,14 @@ type Wiki struct {
 }
 
 func SetupWiki(db *sql.DB, search *search.Search) Wiki {
+	config := tests.TestConfig("http://localhost:8080")
+
 	// Transaction manager.
 	tm := &txdb.TxManager{
 		DB: db,
 	}
+
+	client := client.New()
 
 	// Setup data stores.
 	authStore := setupAuthStore(db)
@@ -38,7 +45,7 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	// Setup services.
 	actors := setupActorsService(actorsStore, keyStore, tm)
 	auth := setupAuth(authStore, sessionStore, actors, tm)
-	articles := setupArticles(articlesStore, tm, search)
+	articles := setupArticles(config, articlesStore, tm, search, client)
 
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles)
@@ -64,11 +71,12 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	fedweb := httphelpers.FedWebMux(apMux, authHandler.SessionMiddleware(mux))
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", config.Config.Port),
+		Addr:    fmt.Sprintf(":%d", config.Port),
 		Handler: fedweb,
 	}
 
 	return Wiki{
+		Config:         config,
 		DB:             db,
 		TxManager:      tm,
 		AuthHandler:    authHandler,

@@ -7,7 +7,7 @@ import (
 )
 
 type ArticleStore interface {
-	ArticleExistsLocally(ctx context.Context, slug, host string) (bool, error)
+	ArticleExistsLocally(ctx context.Context, iri string) (bool, error)
 	SaveArticle(ctx context.Context, article *model.Article) error
 	GetArticle(ctx context.Context, slug, host string) (model.Article, error)
 	SearchArticles(ctx context.Context, iris []string) ([]model.Article, error)

@@ -13,4 +13,6 @@ type Store interface {
 	//of the inserted shared inbox.
 	CreateSharedInboxIfNotExists(ctx context.Context, uri string) (int64, error)
 	GetActorByHandle(ctx context.Context, username, host string) (model.Actor, error)
+	GetActorByIRI(ctx context.Context, iri string) (model.Actor, error)
+	ActorExists(ctx context.Context, iri string) (bool, error)
 }

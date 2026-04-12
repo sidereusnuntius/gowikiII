@@ -10,6 +10,6 @@ import (
 func setupKeyStore(db *sql.DB) *keystore.KeyStore {
 	sqlKeyStore := sqlkeystore.New(db)
 	return &keystore.KeyStore{
-		Store: &sqlKeyStore,
+		Store: sqlKeyStore,
 	}
 }

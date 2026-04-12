@@ -12,27 +12,172 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/sidereusnuntius/gowiki/internal/config"
+	"github.com/sidereusnuntius/gowiki/internal/federation/client"
 	"github.com/sidereusnuntius/gowiki/internal/model"
+	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
+type Actors interface {
+	GetActorByIRI(ctx context.Context, iri string) (model.Actor, error)
+}
+
 type ArticleService struct {
 	Search    *search.Search
 	Store     ArticleStore
 	TxManager *txdb.TxManager
 	Diffs     *diffmatchpatch.DiffMatchPatch
+	Actors    Actors
+	Config    config.WikiConfig
+	Client    client.Client
 }
 
-func New(store ArticleStore, manager *txdb.TxManager, search *search.Search) *ArticleService {
+func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, search *search.Search, client client.Client) *ArticleService {
 	return &ArticleService{
 		Search:    search,
 		Store:     store,
 		TxManager: manager,
 		Diffs:     diffmatchpatch.New(),
+		Config:    config,
+		Client:    client,
 	}
+}
+
+func (as *ArticleService) RemotePatch(ctx context.Context, patch activitystreams.Patch) error {
+	articleIRI, err := url.Parse(patch.Object)
+	if err != nil {
+		return err
+	}
+
+	// TODO: verify if the user or the origin host are blocked.
+	// A remote actor is trying to patch a local article.
+	if articleIRI.Host == as.Config.Host {
+		return as.remotePatchLocalArticle(ctx, patch)
+	}
+
+	// A remote actor patched a foreign article.
+	return as.remotePatch(ctx, patch)
+}
+
+func (as *ArticleService) remotePatch(ctx context.Context, patch activitystreams.Patch) error {
+	actor, err := as.Actors.GetActorByIRI(ctx, patch.Actor)
+	if err != nil {
+		return err
+	}
+
+	// First we check if we already have the object article cached in our local store. If we don't, then we just fetch
+	// the article.
+	exists, err := as.Store.ArticleExistsLocally(ctx, patch.Object)
+	if err != nil {
+		return err
+	}
+
+	var (
+		article  model.ArticleContent
+		revision model.ArticleEdit
+	)
+	return as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
+		// TODO: An interesting problem can arise here, which must be solved:
+		// what happens if an instance receives a patch activity based on a previous revision
+		// whose patch activity was not received and stored in the database. In this case, the patches would be applied on
+		// the wrong revision, resulting in a wrong state for the article.
+		if !exists {
+			article, err = as.fetchArticle(ctx, patch.Object)
+			if err != nil {
+				return err
+			}
+
+			// TODO: What about adding a "firstPatch" property to article?
+			// TODO: validate fetched article.
+			if err = as.Store.SaveArticle(ctx, &article.Article); err != nil {
+				return err
+			}
+
+			revision = model.ArticleEdit{
+				ActorID:  actor.ID,
+				ActorIRI: actor.URI,
+				// Slug: ,
+				// Host: ,
+				IRI: article.URL,
+				// Lang: "",
+				NewContent: article.Content,
+				Summary:    patch.Summary,
+			}
+
+			article.Content = ""
+		} else {
+			req := model.ArticleRequest{
+				IRI: patch.Object,
+			}
+			article, err = as.Store.GetArticleContent(ctx, &req)
+			if err != nil {
+				return err
+			}
+
+			revision = model.ArticleEdit{
+				ActorID:  actor.ID,
+				ActorIRI: actor.URI,
+				Slug:     article.Article.Slug,
+				Host:     article.Article.Host,
+				IRI:      article.Article.IRI,
+				// Lang: "",
+				Summary: patch.Summary,
+			}
+
+			patches, err := as.Diffs.PatchFromText(patch.Diff)
+			if err != nil {
+				return err
+			}
+
+			revision.NewContent, _ = as.Diffs.PatchApply(patches, article.Content)
+		}
+
+		return as.EditArticleContent(ctx, &article, revision)
+	})
+}
+
+func (as *ArticleService) remotePatchLocalArticle(ctx context.Context, patch activitystreams.Patch) error {
+	req := model.ArticleRequest{
+		IRI: patch.Object,
+	}
+
+	content, err := as.Store.GetArticleContent(ctx, &req)
+	if err != nil {
+		return err
+	}
+
+	patches, err := as.Diffs.PatchFromText(patch.Diff)
+	if err != nil {
+		return err
+	}
+
+	patchedText, _ := as.Diffs.PatchApply(patches, content.Content)
+
+	actor, err := as.Actors.GetActorByIRI(ctx, patch.Actor)
+	if err != nil {
+		return err
+	}
+
+	edit := model.ArticleEdit{
+		ActorID:  actor.ID,
+		ActorIRI: actor.URI,
+		Slug:     content.Article.Slug,
+		Host:     content.Article.Host,
+		IRI:      patch.IRI,
+		// Lang: "",
+		NewContent: patchedText,
+		Summary:    patch.Summary,
+	}
+
+	if err = as.EditArticleContent(ctx, &content, edit); err != nil {
+		return err
+	}
+
+	// TODO: send an announce activity to other wikis.
+	return nil
 }
 
 func (as *ArticleService) SearchArticles(ctx context.Context, query string) ([]model.Article, error) {
@@ -57,14 +202,14 @@ func (as *ArticleService) SearchArticles(ctx context.Context, query string) ([]m
 }
 
 func (as *ArticleService) ArticleContent(ctx context.Context, req *model.ArticleRequest) (model.ArticleContent, error) {
-	normalizeRequest(req)
+	as.normalizeRequest(req)
 
 	content, err := as.Store.GetArticleContent(ctx, req)
 	return content, err
 }
 
 func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) error {
-	normalizeEdit(&in)
+	as.normalizeEdit(&in)
 	// Validate
 
 	var new bool
@@ -118,10 +263,10 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 // CreateArticle creates an article object, generating a new IRI for it, and saves it in the data store.
 func (as *ArticleService) CreateArticle(ctx context.Context, slug, host string) (model.Article, error) {
 	var iri string
-	if len(host) == 0 || host == config.Config.Host {
-		iri = config.Config.URL.JoinPath("a", slug).String()
+	if len(host) == 0 || host == as.Config.Host {
+		iri = as.Config.URL.JoinPath("a", slug).String()
 	} else {
-		iri = config.Config.URL.JoinPath("a", slug+"@"+host).String()
+		iri = as.Config.URL.JoinPath("a", slug+"@"+host).String()
 	}
 
 	published := time.Now().UTC()
@@ -161,6 +306,7 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 	content.Content = edit.NewContent
 
 	if content.ID != 0 {
+		content.Updated = time.Now()
 		err = as.Store.UpdateLocalizedArticle(ctx, content)
 	} else {
 		err = as.Store.SaveArticleContent(ctx, content)
@@ -173,13 +319,17 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 	buf := make([]byte, 24)
 	rand.Read(buf)
 	code := base64.URLEncoding.EncodeToString(buf)
+	// TODO: hash patch
 
-	iri, _ := url.Parse(content.Article.IRI)
-	iri = iri.JoinPath("edits", code)
+	iri := edit.IRI
+	if len(iri) == 0 {
+		url, _ := url.Parse(content.Article.IRI)
+		iri = url.JoinPath("edits", code).String()
+	}
 
 	revision := model.Revision{
 		Code:    code,
-		IRI:     iri.String(),
+		IRI:     iri,
 		Diff:    delta,
 		Summary: edit.Summary,
 		// Prev: 0,
@@ -197,7 +347,7 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 // wiki is returned.
 func (as *ArticleService) Homepage(ctx context.Context, wiki, locale string) (model.ArticleContent, error) {
 	if len(wiki) == 0 {
-		wiki = config.Config.Host
+		wiki = as.Config.Host
 	}
 
 	req := model.ArticleRequest{
@@ -207,13 +357,13 @@ func (as *ArticleService) Homepage(ctx context.Context, wiki, locale string) (mo
 	return as.ArticleContent(ctx, &req)
 }
 
-func normalizeEdit(in *model.ArticleEdit) {
+func (as *ArticleService) normalizeEdit(in *model.ArticleEdit) {
 	in.Slug = strings.ToLower(
 		strings.TrimSpace(in.Slug),
 	)
 
 	if len(in.Host) == 0 {
-		in.Host = config.Config.Host
+		in.Host = as.Config.Host
 	} else {
 		in.Host = strings.ToLower(
 			strings.TrimSpace(in.Host),
@@ -221,13 +371,13 @@ func normalizeEdit(in *model.ArticleEdit) {
 	}
 }
 
-func normalizeRequest(req *model.ArticleRequest) {
+func (as *ArticleService) normalizeRequest(req *model.ArticleRequest) {
 	req.Slug = strings.ToLower(
 		strings.TrimSpace(req.Slug),
 	)
 
 	if len(req.Host) == 0 {
-		req.Host = config.Config.Host
+		req.Host = as.Config.Host
 	} else {
 		req.Host = strings.ToLower(
 			strings.TrimSpace(req.Host),
@@ -243,4 +393,19 @@ func populateEmptyLocalizedArticle(content *model.ArticleContent, article *model
 		URL:       "/a/" + article.Slug,
 		Published: time.Now().UTC(),
 	}
+}
+
+func (as *ArticleService) fetchArticle(ctx context.Context, articleIRI string) (model.ArticleContent, error) {
+	raw, err := as.Client.Fetch(ctx, articleIRI)
+	if err != nil {
+		return model.ArticleContent{}, err
+	}
+
+	obj, err := activitystreams.ReadObject(raw)
+	if err != nil {
+		return model.ArticleContent{}, err
+	}
+
+	article, err := obj.AsArticle()
+	return article, err
 }

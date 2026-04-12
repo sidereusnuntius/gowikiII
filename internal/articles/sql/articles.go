@@ -15,7 +15,7 @@ import (
 const (
 	selectArticle        = "SELECT id, slug, host, iri, published, federated_edits, restricted_edits FROM articles WHERE slug = ? AND host = ?"
 	selectArticles       = "SELECT id, slug, host, iri FROM articles where iri IN (%s)"
-	articleExists        = "SELECT EXISTS(SELECT 1 FROM articles WHERE slug = ? AND host = ?)"
+	articleExists        = "SELECT EXISTS(SELECT 1 FROM articles WHERE iri = ?)"
 	insertArticle        = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
 	insertArticleContent = `INSERT INTO localized_articles (
 	lang_code,
@@ -174,9 +174,9 @@ func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (mode
 	return article, nil
 }
 
-func (as *ArticleStore) ArticleExistsLocally(ctx context.Context, slug, host string) (bool, error) {
+func (as *ArticleStore) ArticleExistsLocally(ctx context.Context, iri string) (bool, error) {
 	var exists bool
-	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, articleExists, slug, host)
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, articleExists, iri)
 	if err := row.Scan(&exists); err != nil {
 		return false, err
 	}

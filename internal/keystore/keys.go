@@ -24,13 +24,20 @@ type Fetcher interface {
 type KeyStore struct {
 	Store      Store
 	KeyFetcher Fetcher
+	Config     config.WikiConfig
 }
 
-func New(store Store, fetcher Fetcher) KeyStore {
+func New(config config.WikiConfig, store Store, fetcher Fetcher) KeyStore {
 	return KeyStore{
 		Store:      store,
 		KeyFetcher: fetcher,
+		Config:     config,
 	}
+}
+
+func (ks *KeyStore) SavePublicKey(ctx context.Context, key *model.PublicKey) error {
+	// TODO: validation.
+	return ks.Store.SavePublicKey(ctx, key)
 }
 
 // GenereteKeys creates a pair of public and private key for the given actor and stores them in the database. A URI is created for the public key based on the actor's URI.
@@ -92,7 +99,7 @@ func (ks *KeyStore) VerifySignature(ctx context.Context, r *http.Request) error 
 
 	keyId := verifier.KeyId()
 	keyIdUrl, _ := url.Parse(keyId)
-	if keyIdUrl.Host == config.Config.Host {
+	if keyIdUrl.Host == ks.Config.Host {
 		return errors.New("invalid activity origin")
 	}
 

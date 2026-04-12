@@ -13,8 +13,8 @@ type SqliteKeyStore struct {
 	DB *sql.DB
 }
 
-func New(db *sql.DB) SqliteKeyStore {
-	return SqliteKeyStore{
+func New(db *sql.DB) *SqliteKeyStore {
+	return &SqliteKeyStore{
 		DB: db,
 	}
 }

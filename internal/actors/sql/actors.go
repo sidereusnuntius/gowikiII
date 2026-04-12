@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	selectActorByHandle = `SELECT
+	selectActor = `SELECT
 		a.id,
 		a.uri,
 		a.type,
@@ -38,9 +38,10 @@ const (
 	FROM actors a
 	LEFT JOIN public_keys pk ON pk.owner_id = a.id
 	LEFT JOIN shared_inboxes si ON si.id = a.shared_inbox
-	WHERE a.username = ? AND a.host = ?
-	LIMIT 1`
-	insertActor = `INSERT INTO actors (
+	`
+	selectActorByHandle = selectActor + ` WHERE a.username = ? AND a.host = ? LIMIT 1`
+	selectActorByIRI    = selectActor + " WHERE a.uri = ? LIMIT 1"
+	insertActor         = `INSERT INTO actors (
 		user_id,
 		uri,
 		type,
@@ -62,6 +63,7 @@ const (
 	RETURNING id`
 	selectSharedInboxId = "SELECT id FROM shared_inboxes WHERE uri = ?"
 	insertSharedInbox   = "INSERT INTO shared_inboxes (uri) VALUES (?) RETURNING id"
+	actorExists         = "SELECT EXISTS(SELECT 1 FROM actors WHERE uri = ?)"
 )
 
 type ActorsStore struct {
@@ -72,6 +74,17 @@ func New(db *sql.DB) ActorsStore {
 	return ActorsStore{
 		DB: db,
 	}
+}
+
+func (s *ActorsStore) ActorExists(ctx context.Context, iri string) (bool, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, actorExists, iri)
+
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, sqlhelpers.HandleErr(err)
+	}
+
+	return exists, nil
 }
 
 func (s *ActorsStore) CreateSharedInboxIfNotExists(ctx context.Context, uri string) (int64, error) {
@@ -96,10 +109,7 @@ func (s *ActorsStore) CreateSharedInboxIfNotExists(ctx context.Context, uri stri
 func (s *ActorsStore) SaveActor(ctx context.Context, actor *model.Actor) error {
 	res, err := txdb.GetExecutor(ctx, s.DB).ExecContext(ctx,
 		insertActor,
-		sql.NullInt64{
-			Int64: actor.UserID,
-			Valid: true,
-		},
+		sqlhelpers.NullableInt64(actor.UserID),
 		actor.URI,
 		actor.Type,
 		actor.Username,
@@ -134,6 +144,16 @@ func (s *ActorsStore) GetActorByHandle(ctx context.Context, username, host strin
 		host,
 	)
 
+	return scanActor(row)
+}
+
+func (s *ActorsStore) GetActorByIRI(ctx context.Context, iri string) (model.Actor, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectActorByIRI, iri)
+
+	return scanActor(row)
+}
+
+func scanActor(row *sql.Row) (model.Actor, error) {
 	var (
 		actor                                    model.Actor
 		displayName, summary                     sql.NullString

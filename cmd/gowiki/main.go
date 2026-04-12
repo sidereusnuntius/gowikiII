@@ -44,9 +44,9 @@ func main() {
 
 	wiki := setup.SetupWiki(db, search)
 	wikilog.Logger.Info().
-		Int("port", config.Config.Port).
-		Str("address", config.Config.Host).
-		Str("name", config.Config.Name).
+		Int("port", wiki.Config.Port).
+		Str("address", wiki.Config.Host).
+		Str("name", wiki.Config.Name).
 		Msgf("starting gowiki")
 	if err := wiki.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		wikilog.Logger.Fatal().Err(err).Msg("failed to start http server")

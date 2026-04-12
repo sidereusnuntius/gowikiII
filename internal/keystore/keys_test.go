@@ -13,6 +13,7 @@ import (
 	"code.superseriousbusiness.org/httpsig"
 	"github.com/sidereusnuntius/gowiki/internal/mocks"
 	"github.com/sidereusnuntius/gowiki/internal/model"
+	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/stretchr/testify/mock"
 )
@@ -52,7 +53,7 @@ func initialize() (KeyStore, *mockStore, *mocks.MockClient) {
 	store := new(mockStore)
 	client := new(mocks.MockClient)
 
-	ks := New(store, client)
+	ks := New(tests.TestConfig("localhost:8080"), store, client)
 	return ks, store, client
 }
 
