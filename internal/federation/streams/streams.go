@@ -10,8 +10,8 @@ type Base struct {
 	Context   any    `json:"@context"`
 	Type      string `json:"type"`
 	Id        string `json:"id"`
-	Published string `json:"published,omitzero"`
-	Updated   string `json:"updated,omitzero"`
+	Published string `json:"published,omitempty"`
+	Updated   string `json:"updated,omitempty"`
 	Url       string `json:"url,omitempty"`
 }
 

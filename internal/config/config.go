@@ -10,6 +10,7 @@ type WikiConfig struct {
 	Port        int
 	URL         *url.URL
 	SharedInbox string
+	Testing     bool
 }
 
 type DbConfig struct {

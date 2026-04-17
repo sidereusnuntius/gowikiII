@@ -102,5 +102,5 @@ func (o *Object) AsArticle() (model.ArticleContent, error) {
 	article.Summary = string(o.json.GetStringBytes("summary"))
 	article.URL = string(o.json.GetStringBytes("url"))
 
-	return article, errs
+	return article, nil
 }

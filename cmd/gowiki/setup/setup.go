@@ -5,29 +5,29 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/sidereusnuntius/gowiki/internal/articles"
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/defaulthandler"
+	"github.com/sidereusnuntius/gowiki/internal/federation"
 	"github.com/sidereusnuntius/gowiki/internal/federation/client"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
 	"github.com/sidereusnuntius/gowiki/internal/search"
-	"github.com/sidereusnuntius/gowiki/internal/tests"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
 
 type Wiki struct {
-	Config         config.WikiConfig
-	DB             *sql.DB
-	TxManager      *txdb.TxManager
-	AuthHandler    *auth.Handler
-	DefaultHandler *defaulthandler.DefaultHandler
-	Mux            *http.ServeMux
-	Server         *http.Server
+	Config          config.WikiConfig
+	DB              *sql.DB
+	TxManager       *txdb.TxManager
+	AuthHandler     *auth.Handler
+	ArticlesHandler *articles.Handler
+	DefaultHandler  *defaulthandler.DefaultHandler
+	Mux             *http.ServeMux
+	Server          *http.Server
 }
 
-func SetupWiki(db *sql.DB, search *search.Search) Wiki {
-	config := tests.TestConfig("http://localhost:8080")
-
+func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search) Wiki {
 	// Transaction manager.
 	tm := &txdb.TxManager{
 		DB: db,
@@ -41,18 +41,20 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	actorsStore := setupActorsStore(db)
 	articlesStore := setupArticleStore(db)
 	keyStore := setupKeyStore(db)
+	hostsStore := setupHostsStore(db)
 
 	// Setup services.
-	actors := setupActorsService(actorsStore, keyStore, tm)
+	actors := setupActorsService(config, actorsStore, keyStore, tm)
 	auth := setupAuth(authStore, sessionStore, actors, tm)
 	articles := setupArticles(config, articlesStore, tm, search, client)
+	federation := federation.New(config, hostsStore, client, actors, articles, nil)
 
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles)
 	authHandler := setupAuthHandler(auth)
 	defaultHandler := defaulthandler.New(articles)
 
-	activityPubHandler := setupActivityPubHandler(actors)
+	activityPubHandler := setupActivityPubHandler(federation, articles, actors, keyStore)
 
 	// Wire HTTP routing and handlers.
 	mux := http.NewServeMux()
@@ -76,12 +78,13 @@ func SetupWiki(db *sql.DB, search *search.Search) Wiki {
 	}
 
 	return Wiki{
-		Config:         config,
-		DB:             db,
-		TxManager:      tm,
-		AuthHandler:    authHandler,
-		DefaultHandler: defaultHandler,
-		Mux:            mux,
-		Server:         server,
+		Config:          config,
+		DB:              db,
+		TxManager:       tm,
+		AuthHandler:     authHandler,
+		ArticlesHandler: articlesHandler,
+		DefaultHandler:  defaultHandler,
+		Mux:             mux,
+		Server:          server,
 	}
 }

@@ -7,6 +7,7 @@ import (
 )
 
 func (f *Federation) ProcessActivity(ctx context.Context, activity activitystreams.Activity) error {
+
 	var err error
 	switch activity.Type {
 	case ActivityPatch:

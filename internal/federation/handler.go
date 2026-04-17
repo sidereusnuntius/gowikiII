@@ -3,22 +3,55 @@ package federation
 import (
 	"net/http"
 
-	"github.com/sidereusnuntius/gowiki/internal/actors"
 	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
 	"github.com/sidereusnuntius/gowiki/internal/keystore"
+	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/sanitize"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 type FedGateway struct {
-	Actors *actors.Actors
-	Keys   *keystore.KeyStore
+	Actors     ActorService
+	Keys       *keystore.KeyStore
+	Articles   ArticleService
+	Federation *Federation
+}
+
+func NewGateway(federation *Federation, articles ArticleService, actors ActorService, keys *keystore.KeyStore) *FedGateway {
+	return &FedGateway{
+		Actors:     actors,
+		Keys:       keys,
+		Articles:   articles,
+		Federation: federation,
+	}
 }
 
 func (fg *FedGateway) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /u/{username}", fg.GetActor)
+	mux.HandleFunc("GET /a/{slug}", fg.GetArticle)
 	mux.HandleFunc("POST /inbox", fg.SignedMiddleware(fg.Inbox))
+}
+
+func (fg *FedGateway) GetArticle(w http.ResponseWriter, r *http.Request) {
+	slug := sanitize.Normalize(
+		r.PathValue("slug"),
+	)
+
+	req := model.ArticleRequest{
+		Slug: slug,
+	}
+	article, err := fg.Articles.ArticleContent(r.Context(), &req)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError) // TODO: handle error
+		return
+	}
+
+	articleAS := streams.ArticleAS(&article)
+	if err = httphelpers.WriteActivity(w, articleAS); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		wikilog.Logger.Error().Err(err).Msg("httphelpers.WriteActivity(w, articleAS)")
+	}
 }
 
 func (fg *FedGateway) GetActor(w http.ResponseWriter, r *http.Request) {

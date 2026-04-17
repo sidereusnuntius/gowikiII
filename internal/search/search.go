@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
@@ -17,30 +18,53 @@ type Search struct {
 	articles bleve.Index
 }
 
-func Start() (*Search, error) {
-	articleMapping := articleIndexMapping()
+func openOrCreateIndex(name string, mapping mapping.IndexMapping) (bleve.Index, error) {
+	var index bleve.Index
 
-	var articlesIndex bleve.Index
-	articlesIndexPath := filepath.Join(searchIndexesPath, "articles.bleve")
-	stat, err := os.Stat(articlesIndexPath)
+	indexPath := filepath.Join(searchIndexesPath, name+".bleve")
+	stat, err := os.Stat(indexPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
 
-		wikilog.Logger.Debug().Msgf("creating index at %s", articlesIndexPath)
-		articlesIndex, err = bleve.New(articlesIndexPath, articleMapping)
+		wikilog.Logger.Debug().Msgf("creating index at %s", indexPath)
+		index, err = bleve.New(indexPath, mapping)
 		if err != nil {
 			return nil, fmt.Errorf("bleve.New(): failed to create articles index:  %w", err)
 		}
 	} else if !stat.IsDir() {
 		return nil, fmt.Errorf("expected articles index to be at '%s', but there is a file at that path")
 	} else {
-		wikilog.Logger.Debug().Msgf("opening index at %s", articlesIndexPath)
-		articlesIndex, err = bleve.Open(articlesIndexPath)
+		wikilog.Logger.Debug().Msgf("opening index at %s", indexPath)
+		index, err = bleve.Open(indexPath)
 		if err != nil {
 			return nil, fmt.Errorf("bleve.Open(): failed to open articles index: %w", err)
 		}
+	}
+
+	return index, nil
+}
+
+func TestSearch() (*Search, error) {
+	articleMapping := articleIndexMapping()
+
+	articlesIndex, err := bleve.NewMemOnly(articleMapping)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Search{
+		articles: articlesIndex,
+	}, nil
+}
+
+func Start() (*Search, error) {
+	articleMapping := articleIndexMapping()
+
+	articlesIndex, err := openOrCreateIndex("articles", articleMapping)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Search{

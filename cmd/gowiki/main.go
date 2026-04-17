@@ -9,6 +9,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/db"
 	"github.com/sidereusnuntius/gowiki/internal/search"
+	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
@@ -42,7 +43,9 @@ func main() {
 		search.Close()
 	}()
 
-	wiki := setup.SetupWiki(db, search)
+	config := tests.TestConfig("http://localhost:8080")
+
+	wiki := setup.SetupWiki(config, db, search)
 	wikilog.Logger.Info().
 		Int("port", wiki.Config.Port).
 		Str("address", wiki.Config.Host).

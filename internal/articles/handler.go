@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
@@ -21,6 +22,9 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /a/{slug}", handler.Read)
 	mux.HandleFunc("GET /a/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
 	mux.HandleFunc("POST /a/{slug}/edit", authhelpers.Authenticated(handler.Submit))
+
+	mux.HandleFunc("GET /a/{host}/{slug}", handler.Read)
+
 	mux.HandleFunc("POST /preview", authhelpers.Authenticated(handler.Preview))
 	mux.HandleFunc("GET /search", handler.Search)
 }
@@ -33,6 +37,21 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := p.GetString("query")
+	if strings.HasPrefix(query, "http://") || strings.HasPrefix(query, "https://") { // Replace this with a regex
+		article, err := h.ArticleService.CacheRemoteArticle(p.Ctx, query)
+		if err != nil {
+			wikilog.Logger.Error().Err(err).Msg("h.ArticleService.fetchArticle()")
+			p.HandleError(err)
+			return
+		}
+
+		p.Redirect(
+			fmt.Sprintf("/a/%s/%s", article.Article.Host, article.Article.Slug),
+			"#content",
+		)
+		return
+	}
+
 	articles, err := h.ArticleService.SearchArticles(p.Ctx, query)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.SearchArticles()")
@@ -54,9 +73,11 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := r.PathValue("slug")
+	host := r.PathValue("host")
 
 	req := model.ArticleRequest{
 		Slug: slug,
+		Host: host,
 	}
 
 	content, err := h.ArticleService.ArticleContent(p.Ctx, &req)

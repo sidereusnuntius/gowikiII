@@ -54,3 +54,11 @@ func GetExecutor(ctx context.Context, db *sql.DB) SqlExecutor {
 	}
 	return db
 }
+
+func GetTransaction(ctx context.Context) (*sql.Tx, bool) {
+	if tx, ok := ctx.Value(txKey{}).(*sql.Tx); ok && tx != nil {
+		return tx, true
+	}
+
+	return nil, false
+}

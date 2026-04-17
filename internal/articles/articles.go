@@ -75,65 +75,42 @@ func (as *ArticleService) remotePatch(ctx context.Context, patch activitystreams
 		return err
 	}
 
-	var (
-		article  model.ArticleContent
-		revision model.ArticleEdit
-	)
 	return as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
 		// TODO: An interesting problem can arise here, which must be solved:
 		// what happens if an instance receives a patch activity based on a previous revision
 		// whose patch activity was not received and stored in the database. In this case, the patches would be applied on
 		// the wrong revision, resulting in a wrong state for the article.
 		if !exists {
-			article, err = as.fetchArticle(ctx, patch.Object)
-			if err != nil {
-				return err
-			}
-
 			// TODO: What about adding a "firstPatch" property to article?
 			// TODO: validate fetched article.
-			if err = as.Store.SaveArticle(ctx, &article.Article); err != nil {
-				return err
-			}
-
-			revision = model.ArticleEdit{
-				ActorID:  actor.ID,
-				ActorIRI: actor.URI,
-				// Slug: ,
-				// Host: ,
-				IRI: article.URL,
-				// Lang: "",
-				NewContent: article.Content,
-				Summary:    patch.Summary,
-			}
-
-			article.Content = ""
-		} else {
-			req := model.ArticleRequest{
-				IRI: patch.Object,
-			}
-			article, err = as.Store.GetArticleContent(ctx, &req)
-			if err != nil {
-				return err
-			}
-
-			revision = model.ArticleEdit{
-				ActorID:  actor.ID,
-				ActorIRI: actor.URI,
-				Slug:     article.Article.Slug,
-				Host:     article.Article.Host,
-				IRI:      article.Article.IRI,
-				// Lang: "",
-				Summary: patch.Summary,
-			}
-
-			patches, err := as.Diffs.PatchFromText(patch.Diff)
-			if err != nil {
-				return err
-			}
-
-			revision.NewContent, _ = as.Diffs.PatchApply(patches, article.Content)
+			_, err = as.CacheRemoteArticle(ctx, patch.Object)
+			return err
 		}
+
+		req := model.ArticleRequest{
+			IRI: patch.Object,
+		}
+		article, err := as.Store.GetArticleContent(ctx, &req)
+		if err != nil {
+			return err
+		}
+
+		revision := model.ArticleEdit{
+			ActorID:  actor.ID,
+			ActorIRI: actor.URI,
+			Slug:     article.Article.Slug,
+			Host:     article.Article.Host,
+			IRI:      article.Article.IRI,
+			// Lang: "",
+			Summary: patch.Summary,
+		}
+
+		patches, err := as.Diffs.PatchFromText(patch.Diff)
+		if err != nil {
+			return err
+		}
+
+		revision.NewContent, _ = as.Diffs.PatchApply(patches, article.Content)
 
 		return as.EditArticleContent(ctx, &article, revision)
 	})
@@ -363,6 +340,7 @@ func (as *ArticleService) normalizeEdit(in *model.ArticleEdit) {
 	)
 
 	if len(in.Host) == 0 {
+		wikilog.Logger.Info().Msg("local article")
 		in.Host = as.Config.Host
 	} else {
 		in.Host = strings.ToLower(
@@ -408,4 +386,23 @@ func (as *ArticleService) fetchArticle(ctx context.Context, articleIRI string) (
 
 	article, err := obj.AsArticle()
 	return article, err
+}
+
+func (as *ArticleService) CacheRemoteArticle(ctx context.Context, articleId string) (model.ArticleContent, error) {
+	article, err := as.fetchArticle(ctx, articleId)
+	if err != nil {
+		return model.ArticleContent{}, err
+	}
+
+	// TODO: What about adding a "firstPatch" property to article?
+	// TODO: validate fetched article.
+	if err = as.Store.SaveArticle(ctx, &article.Article); err != nil {
+		return model.ArticleContent{}, err
+	}
+
+	if err = as.Store.SaveArticleContent(ctx, &article); err != nil {
+		return model.ArticleContent{}, err
+	}
+
+	return article, as.Search.IndexArticle(&article)
 }
