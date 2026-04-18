@@ -13,6 +13,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/federation/client"
+	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 	"github.com/sidereusnuntius/gowiki/internal/search"
@@ -23,6 +24,7 @@ import (
 
 type Actors interface {
 	GetActorByIRI(ctx context.Context, iri string) (model.Actor, error)
+	GetActorByID(ctx context.Context, id int64) (model.Actor, error)
 }
 
 type ArticleService struct {
@@ -189,6 +191,11 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 	as.normalizeEdit(&in)
 	// Validate
 
+	// User is trying to update a foreign article.
+	if in.Host != as.Config.Host {
+
+	}
+
 	var new bool
 	err := as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
 		article, err := as.Store.GetArticle(ctx, in.Slug, in.Host)
@@ -277,8 +284,8 @@ func (as *ArticleService) UpdateArticle(ctx context.Context, content model.Artic
 // Otherwise, it creates the localized article. In both cases it creates a new revision.
 func (as *ArticleService) EditArticleContent(ctx context.Context, content *model.ArticleContent, edit model.ArticleEdit) error {
 	var err error
-	diff := as.Diffs.DiffMain(content.Content, edit.NewContent, false)
-	delta := as.Diffs.DiffToDelta(diff)
+
+	revision, _ := as.newRevision(content, &edit)
 
 	content.Content = edit.NewContent
 
@@ -291,29 +298,6 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 
 	if err != nil {
 		return err
-	}
-
-	buf := make([]byte, 24)
-	rand.Read(buf)
-	code := base64.URLEncoding.EncodeToString(buf)
-	// TODO: hash patch
-
-	iri := edit.IRI
-	if len(iri) == 0 {
-		url, _ := url.Parse(content.Article.IRI)
-		iri = url.JoinPath("edits", code).String()
-	}
-
-	revision := model.Revision{
-		Code:    code,
-		IRI:     iri,
-		Diff:    delta,
-		Summary: edit.Summary,
-		// Prev: 0,
-		ArticleID: content.Article.ID,
-		Published: time.Now().UTC(),
-		ActorID:   edit.ActorID,
-		ActorIRI:  edit.ActorIRI,
 	}
 
 	return as.Store.SaveRevision(ctx, &revision)
@@ -405,4 +389,62 @@ func (as *ArticleService) CacheRemoteArticle(ctx context.Context, articleId stri
 	}
 
 	return article, as.Search.IndexArticle(&article)
+}
+
+func (as *ArticleService) PatchRemoteArticle(ctx context.Context, edit *model.ArticleEdit) error {
+	req := model.ArticleRequest{
+		Slug: edit.Slug,
+		Host: edit.Host,
+	}
+
+	currContent, err := as.Store.GetArticleContent(ctx, &req)
+	if err != nil {
+		return err
+	}
+
+	actor, err := as.Actors.GetActorByID(ctx, edit.ActorID)
+	if err != nil {
+		return err
+	}
+
+	edit.ActorID = actor.ID
+	edit.ActorIRI = actor.URI
+	revision, patches := as.newRevision(&currContent, edit)
+	patch := streams.PatchAS(currContent.Article.IRI, patches, &revision)
+
+	// patch :=
+	return nil
+}
+
+func (as *ArticleService) newRevision(content *model.ArticleContent, edit *model.ArticleEdit) (revision model.Revision, patches string) {
+	buf := make([]byte, 24)
+	rand.Read(buf)
+	code := base64.URLEncoding.EncodeToString(buf)
+
+	iri := edit.IRI
+	if len(iri) == 0 {
+		url, _ := url.Parse(content.Article.IRI)
+		iri = url.JoinPath("edits", code).String()
+	}
+
+	diff := as.Diffs.DiffMain(content.Content, edit.NewContent, false)
+	delta := as.Diffs.DiffToDelta(diff)
+
+	revision = model.Revision{
+		Code:    code,
+		IRI:     iri,
+		Diff:    delta,
+		Summary: edit.Summary,
+		// Prev: 0,
+		ArticleID: content.Article.ID,
+		Published: time.Now().UTC(),
+		ActorID:   edit.ActorID,
+		ActorIRI:  edit.ActorIRI,
+	}
+
+	patches = as.Diffs.PatchToText(
+		as.Diffs.PatchMake(diff),
+	)
+
+	return
 }

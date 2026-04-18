@@ -15,6 +15,12 @@ type Base struct {
 	Url       string `json:"url,omitempty"`
 }
 
+type Activity struct {
+	Base
+	Actor  string `json:"actor,omitempty"`
+	Object any    `json:"omitempty"`
+}
+
 type Endpoints struct {
 	SharedInbox string `json:"sharedInbox,omitzero"`
 }

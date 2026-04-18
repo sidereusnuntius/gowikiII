@@ -116,3 +116,7 @@ func (a *Actors) CreateLocalActor(ctx context.Context, username string, userID i
 func (a *Actors) GetLocalActor(ctx context.Context, username string) (model.Actor, error) {
 	return a.Store.GetActorByHandle(ctx, username, a.Config.Host)
 }
+
+func (a *Actors) GetActorByID(ctx context.Context, id int64) (model.Actor, error) {
+	return a.Store.GetActorByID(ctx, id)
+}

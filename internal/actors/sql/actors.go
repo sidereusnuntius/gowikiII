@@ -41,6 +41,7 @@ const (
 	`
 	selectActorByHandle = selectActor + ` WHERE a.username = ? AND a.host = ? LIMIT 1`
 	selectActorByIRI    = selectActor + " WHERE a.uri = ? LIMIT 1"
+	selectActorByID     = selectActor + " WHERE a.id = ? LIMIT 1"
 	insertActor         = `INSERT INTO actors (
 		user_id,
 		uri,
@@ -143,6 +144,12 @@ func (s *ActorsStore) GetActorByHandle(ctx context.Context, username, host strin
 		username,
 		host,
 	)
+
+	return scanActor(row)
+}
+
+func (s *ActorsStore) GetActorByID(ctx context.Context, id int64) (model.Actor, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectActorByID, id)
 
 	return scanActor(row)
 }

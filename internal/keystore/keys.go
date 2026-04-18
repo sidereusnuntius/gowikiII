@@ -10,12 +10,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"code.superseriousbusiness.org/httpsig"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 )
+
+var algorithmPreferences = []httpsig.Algorithm{httpsig.RSA_SHA256}
+var headers = []string{httpsig.RequestTarget,}
+const digestAlgorithm = httpsig.DigestSha256
 
 type Fetcher interface {
 	FetchKey(ctx context.Context, keyId string) (model.PublicKey, error)
@@ -25,6 +30,9 @@ type KeyStore struct {
 	Store      Store
 	KeyFetcher Fetcher
 	Config     config.WikiConfig
+	// TODO: change this to a pool.
+	signer httpsig.Signer
+	signerMutex sync.Mutex
 }
 
 func New(config config.WikiConfig, store Store, fetcher Fetcher) KeyStore {
@@ -32,6 +40,7 @@ func New(config config.WikiConfig, store Store, fetcher Fetcher) KeyStore {
 		Store:      store,
 		KeyFetcher: fetcher,
 		Config:     config,
+		signer: httpsig.NewSigner(algorithmPreferences, digestAlgorithm, )
 	}
 }
 
@@ -137,4 +146,8 @@ func (ks *KeyStore) VerifySignature(ctx context.Context, r *http.Request) error 
 	}
 
 	return verifier.Verify(pub, algorithm)
+}
+
+func (ks *KeyStore) SignRequest(ctx context.Context, r *http.Request, actorIRI string) error {
+
 }

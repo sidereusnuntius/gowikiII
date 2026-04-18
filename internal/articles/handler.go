@@ -20,10 +20,13 @@ type Handler struct {
 
 func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /a/{slug}", handler.Read)
-	mux.HandleFunc("GET /a/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
-	mux.HandleFunc("POST /a/{slug}/edit", authhelpers.Authenticated(handler.Submit))
-
 	mux.HandleFunc("GET /a/{host}/{slug}", handler.Read)
+
+	mux.HandleFunc("GET /a/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
+	mux.HandleFunc("GET /a/{host}/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
+
+	mux.HandleFunc("POST /a/{slug}/edit", authhelpers.Authenticated(handler.Submit))
+	mux.HandleFunc("POST /a/{host}/{slug/edit", authhelpers.Authenticated(handler.Submit))
 
 	mux.HandleFunc("POST /preview", authhelpers.Authenticated(handler.Preview))
 	mux.HandleFunc("GET /search", handler.Search)
@@ -107,9 +110,11 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := r.PathValue("slug")
+	host := r.PathValue("host")
 
 	req := model.ArticleRequest{
 		Slug: slug,
+		Host: host,
 	}
 	content, err := h.ArticleService.ArticleContent(p.Ctx, &req)
 	if err != nil && !errors.Is(err, wikierr.ErrNotFound) {
@@ -152,6 +157,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := r.PathValue("slug")
+	host := r.PathValue("host")
 
 	content := p.GetString("content")
 	summary := p.GetString("summary")
@@ -159,7 +165,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	edit := model.ArticleEdit{
 		ActorID: p.Content.Session.User.ID,
 		Slug:    slug,
-		// Host: ,
+		Host:    host,
 		// IRI: ,
 		// Lang: ,
 		NewContent: content,
