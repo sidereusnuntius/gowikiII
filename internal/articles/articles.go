@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -209,7 +208,7 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 	err = as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
 		article, err := as.Store.GetArticle(ctx, in.Slug, in.Host)
 		if err != nil {
-			if !errors.Is(err, wikierr.ErrNotFound) {
+			if !wikierr.Is(err, wikierr.ErrNotFound) {
 				return fmt.Errorf("as.Store.GetArticle(): %w", err)
 			}
 
@@ -235,7 +234,7 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 			content, err = as.Store.GetArticleContent(ctx, &req)
 			// There is already a localized version of this article in the provided language,
 			// so we update it.
-			if err != nil && !errors.Is(err, wikierr.ErrNotFound) {
+			if err != nil && !wikierr.Is(err, wikierr.ErrNotFound) {
 				return fmt.Errorf("as.Store.GetArticleContent(): %w", err)
 			}
 		} else {

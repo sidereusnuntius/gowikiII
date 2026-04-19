@@ -24,7 +24,7 @@ func ReadActivity(raw []byte) (Activity, error) {
 func (a *Activity) Actor() (string, error) {
 	actor := a.json.Get("actor")
 	if actor == nil {
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
 	var actorId []byte
@@ -37,16 +37,16 @@ func (a *Activity) Actor() (string, error) {
 	}
 
 	if len(actorId) == 0 {
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
-	return string(actorId), wikierr.ErrMissing
+	return string(actorId), wikierr.Missing
 }
 
 func (a *Activity) ObjectId() (string, error) {
 	object := a.json.Get("object")
 	if object == nil {
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
 	var objectId []byte
@@ -58,7 +58,7 @@ func (a *Activity) ObjectId() (string, error) {
 	}
 
 	if len(objectId) == 0 {
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
 	return string(objectId), nil

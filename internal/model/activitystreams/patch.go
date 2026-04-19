@@ -36,14 +36,14 @@ func (a *Activity) AsPatch() (Patch, error) {
 
 	diff := string(a.json.GetStringBytes("diff"))
 	if len(diff) == 0 {
-		errs.Append("diff", wikierr.ErrMissing)
+		errs.Append("diff", wikierr.Missing)
 	}
 
 	published, ok, err := a.Published()
 	if err != nil {
 		errs.Append("published", err)
 	} else if !ok {
-		errs.Append("published", wikierr.ErrMissing)
+		errs.Append("published", wikierr.Missing)
 	}
 
 	patch := Patch{

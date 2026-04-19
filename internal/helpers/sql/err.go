@@ -11,7 +11,7 @@ func HandleErr(err error) error {
 	switch err {
 	case sql.ErrNoRows:
 		fmt.Println("not found")
-		return wikierr.ErrNotFound
+		return wikierr.New(wikierr.ErrNotFound, "")
 	default:
 		return err
 	}

@@ -117,7 +117,7 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 		Host: host,
 	}
 	content, err := h.ArticleService.ArticleContent(p.Ctx, &req)
-	if err != nil && !errors.Is(err, wikierr.ErrNotFound) {
+	if err != nil && !wikierr.Is(err, wikierr.ErrNotFound) {
 		wikilog.Logger.Error().Err(err).Msg("handler.ArticleService.ArticleContent()")
 		return
 	}

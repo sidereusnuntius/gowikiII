@@ -34,7 +34,8 @@ func Start(t *testing.T, addr string) TestRig {
 	cfg := tests.TestConfig(addr)
 	t.Log("config", cfg)
 	db, err := db.Open(context.Background(), config.DbConfig{
-		URL: dbURL,
+		URL:  dbURL,
+		Test: true,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -169,7 +169,7 @@ func TestVerifySignature(t *testing.T) {
 				pubAlice.URI,
 			),
 			shouldFail:  false,
-			storeErr:    wikierr.ErrNotFound,
+			storeErr:    wikierr.New(wikierr.ErrNotFound, ""),
 			shouldFetch: true,
 			fetchErr:    nil,
 			saveErr:     nil,

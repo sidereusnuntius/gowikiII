@@ -37,7 +37,7 @@ func ReadObject(raw []byte) (Object, error) {
 func GetIRI(name string, json *fastjson.Value) (string, error) {
 	iri := string(json.GetStringBytes(name))
 	if len(iri) == 0 {
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
 	// TODO: Perform IRI validation

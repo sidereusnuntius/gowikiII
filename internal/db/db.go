@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
@@ -13,7 +14,13 @@ import (
 )
 
 func Open(ctx context.Context, config config.DbConfig) (handle *sql.DB, err error) {
-	url := config.URL + "?_journal=WAL&_timeout=5000&_fk=true" // TODO: improve this
+	args := new(url.Values)
+	if !config.Test {
+		args.Add("_journal", "WAL")
+		args.Add("_timeout", "5000") // Make this configurable
+	}
+
+	url := fmt.Sprintf("%s?%s", config.URL, args.Encode()) // TODO: improve this
 	handle, err = sql.Open("sqlite3", url)
 	if err != nil {
 		err = fmt.Errorf("failed to open database connection: %w", err)

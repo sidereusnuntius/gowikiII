@@ -2,7 +2,6 @@ package federation
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -103,7 +102,7 @@ func (f *Federation) EnsureActor(ctx context.Context, actorId string) error {
 func (f *Federation) CheckOriginHost(ctx context.Context, name string) (bool, error) {
 	host, err := f.Store.GetHost(ctx, name)
 	if err != nil {
-		if !errors.Is(err, wikierr.ErrNotFound) {
+		if !wikierr.Is(err, wikierr.ErrNotFound) {
 			return false, err
 		}
 

@@ -2,13 +2,13 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
+	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 )
 
 type Client interface {
@@ -57,7 +57,7 @@ func (ac *ApClient) Fetch(ctx context.Context, url string) ([]byte, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusAccepted {
-		return nil, errors.New("request failed") // TODO: handle response code and provide better message
+		return nil, handleFetchErr(res) // TODO: handle response code and provide better message
 	}
 
 	body, err := io.ReadAll(res.Body)
@@ -80,4 +80,13 @@ func (ac *ApClient) Post(ctx context.Context, r *http.Request) error {
 	}
 
 	return nil
+}
+
+func handleFetchErr(res *http.Response) error {
+	switch res.StatusCode {
+	case http.StatusNotFound:
+		return wikierr.New(wikierr.ErrNotFound, "")
+	default:
+		return wikierr.New(wikierr.ErrInternal, "")
+	}
 }

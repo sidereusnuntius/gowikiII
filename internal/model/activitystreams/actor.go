@@ -26,7 +26,7 @@ type Actor struct {
 func (o *Object) Username() (string, error) {
 	username := string(o.json.GetStringBytes("preferredUsername"))
 	if len(username) == 0 { // TODO: perform complete validation.
-		return "", wikierr.ErrMissing
+		return "", wikierr.Missing
 	}
 
 	return username, nil
@@ -36,7 +36,7 @@ func (o *Object) PublicKey() (model.PublicKey, error) {
 	errs := wikierr.NewValidationError()
 	publicKey := o.json.Get("publicKey")
 	if publicKey == nil {
-		return model.PublicKey{}, wikierr.ErrMissing
+		return model.PublicKey{}, wikierr.Missing
 	}
 
 	id, err := GetIRI("id", publicKey)

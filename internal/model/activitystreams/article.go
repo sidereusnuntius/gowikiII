@@ -54,7 +54,7 @@ func (o *Object) AsArticle() (model.ArticleContent, error) {
 	if !ok {
 		// If slug is not present, we try to create it from title.
 		if len(title) == 0 {
-			errs.Append("name", wikierr.ErrMissing)
+			errs.Append("name", wikierr.Missing)
 		} else {
 			slug = strings.ToLower(
 				space.ReplaceAllString(
@@ -68,7 +68,7 @@ func (o *Object) AsArticle() (model.ArticleContent, error) {
 	// TODO: handle mediaType
 	source, _, ok := o.Source()
 	if !ok {
-		errs.Append("source", wikierr.ErrMissing)
+		errs.Append("source", wikierr.Missing)
 	}
 
 	article := model.ArticleContent{

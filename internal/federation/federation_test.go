@@ -91,7 +91,7 @@ func TestCheckOriginHost(t *testing.T) {
 			host:         "bio.wiki",
 			cached:       false,
 			cachedHost:   model.Host{},
-			storeErr:     wikierr.ErrNotFound,
+			storeErr:     wikierr.New(wikierr.ErrNotFound, ""),
 			storeSaveErr: nil,
 			publisherErr: nil,
 

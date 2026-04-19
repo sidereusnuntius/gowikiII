@@ -130,7 +130,7 @@ func (s *Security) VerifySignature(ctx context.Context, r *http.Request) error {
 
 	key, err := s.Store.GetPublicKey(ctx, keyId)
 	if err != nil {
-		if !errors.Is(err, wikierr.ErrNotFound) {
+		if !wikierr.Is(err, wikierr.ErrNotFound) {
 			return err
 		}
 

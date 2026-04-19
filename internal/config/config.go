@@ -16,5 +16,6 @@ type WikiConfig struct {
 type DbConfig struct {
 	URL     string
 	Timeout int
+	Test    bool
 	// TODO: add other options
 }
