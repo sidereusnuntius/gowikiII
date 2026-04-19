@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"os"
 
 	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
+	"github.com/sidereusnuntius/gowiki/templates"
 )
 
 var templatesHome string
@@ -51,10 +51,11 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 
 	if !page.isFx {
 		// If it's not a fixi request, then we need to render the whole page.
-		page.template, err = template.ParseFiles(
-			TemplatePath("index.html"),
-			TemplatePath("container.html"),
-			TemplatePath("header.html"),
+		page.template, err = template.ParseFS(
+			templates.TemplatesFS,
+			"index.html",
+			"container.html",
+			"header.html",
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read common layout from file: %w", err)
@@ -69,9 +70,9 @@ func (p *Page) GetString(name string) string {
 }
 
 func (p *Page) AddTemplate(paths ...string) {
-	for i := range paths {
-		paths[i] = TemplatePath(paths[i])
-	}
+	// for i := range paths {
+	// 	paths[i] = paths[i]
+	// }
 	p.subtemplates = append(p.subtemplates, paths...)
 }
 
@@ -92,7 +93,7 @@ func (p *Page) PatchElement(path, templateName, selector string) {
 	p.writer.Header().Set("FX-target", selector)
 	p.writer.WriteHeader(p.status)
 
-	tmpl, err := template.ParseFiles(TemplatePath(path))
+	tmpl, err := template.ParseFS(templates.TemplatesFS, path)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("failed to parse template")
 	}
@@ -111,10 +112,11 @@ func (p *Page) ReloadPage(path string) {
 	header := p.writer.Header()
 	header.Add("Fx-Target", "#page-container")
 	header.Add("Content-Type", "text/html")
-	tmpl, err := template.ParseFiles(
-		TemplatePath("container.html"),
-		TemplatePath("header.html"),
-		TemplatePath(path),
+	tmpl, err := template.ParseFS(
+		templates.TemplatesFS,
+		"container.html",
+		"header.html",
+		path,
 	)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("failed to parse template")
@@ -151,9 +153,9 @@ func (p *Page) Render(path string) {
 			l.Str("page title", p.Content.Title)
 		}
 
-		p.subtemplates = append(p.subtemplates, TemplatePath(path))
+		p.subtemplates = append(p.subtemplates, path)
 
-		tmpl, err := template.ParseFiles(p.subtemplates...)
+		tmpl, err := template.ParseFS(templates.TemplatesFS, p.subtemplates...)
 		if err != nil {
 			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to parse template file")
 		}
@@ -172,9 +174,9 @@ func (p *Page) Render(path string) {
 
 func (p *Page) render(path string) {
 	var err error
-	p.subtemplates = append(p.subtemplates, TemplatePath(path))
+	p.subtemplates = append(p.subtemplates, path)
 
-	p.template, err = p.template.ParseFiles(p.subtemplates...)
+	p.template, err = p.template.ParseFS(templates.TemplatesFS, p.subtemplates...)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Strs("subtemplates", p.subtemplates).Msg("failed to read subtemplates from files")
 	}
@@ -183,31 +185,4 @@ func (p *Page) render(path string) {
 		wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to execute template")
 	}
 	wikilog.Logger.Debug().Str("template", path).Strs("subtemplates", p.subtemplates).Msg("rendered template")
-}
-
-func TemplatePath(path string) string {
-	return templatesHome + "/" + path
-}
-
-func init() {
-	locVar := os.Getenv("TEMPLATES_HOME")
-	if len(locVar) > 0 {
-		templatesHome = locVar
-	} else {
-		templatesHome = "./templates"
-	}
-
-	wikilog.Logger.Info().Msgf("loading templates from %s", templatesHome)
-
-	info, err := os.Stat(templatesHome)
-	if err != nil {
-		wikilog.Logger.Fatal().
-			Err(err).
-			Msg("failed to obtain information about templates folder")
-		return
-	}
-
-	if !info.IsDir() {
-		wikilog.Logger.Fatal().Msgf("%s is not a directory", templatesHome)
-	}
 }

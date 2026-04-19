@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -40,6 +41,7 @@ func (r *TestRig) editLocalArticle(t *testing.T, slug, host, content, summary st
 	var endpoint string
 	if len(host) > 0 {
 		endpoint = r.Wiki.Config.URL.JoinPath("a", host, slug, "edit").String()
+		fmt.Println("endpoint:", endpoint)
 	} else {
 		endpoint = r.Wiki.Config.URL.JoinPath("a", slug, "edit").String()
 	}
@@ -71,6 +73,20 @@ func (r *TestRig) editLocalArticle(t *testing.T, slug, host, content, summary st
 			t.Error("saved article contains a different source")
 			t.Logf("expected: \"%s\"", content)
 			t.Logf("got: \"%s\"", article.Content)
+		}
+	}
+}
+
+func (r *TestRig) hasContent(t *testing.T, slug, content string) func(t *testing.T) {
+	return func(t *testing.T) {
+		req := model.ArticleRequest{
+			Slug: slug,
+		}
+		article, err := r.Wiki.ArticlesHandler.ArticleService.ArticleContent(t.Context(), &req)
+		fatalErr(t, err)
+
+		if diff := cmp.Diff(content, article.Content); diff != "" {
+			t.Error(diff)
 		}
 	}
 }

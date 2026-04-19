@@ -42,8 +42,9 @@ type PublicKey struct {
 }
 
 type PrivateKey struct {
-	ID      int
-	OwnerID int64
-	Type    KeyType
-	Pem     []byte
+	ID           int
+	OwnerID      int64
+	Type         KeyType
+	Pem          []byte
+	PublicKeyIRI string
 }

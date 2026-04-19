@@ -2,9 +2,12 @@ package e2e
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
 	"sync"
 	"testing"
 
@@ -18,15 +21,20 @@ import (
 type TestRig struct {
 	Wiki   setup.Wiki
 	Client *http.Client
+	DbURL  string
 }
 
 var wg sync.WaitGroup
 
 func Start(t *testing.T, addr string) TestRig {
+	buf := make([]byte, 4)
+	rand.Read(buf)
+
+	dbURL := "./" + base64.URLEncoding.EncodeToString(buf)
 	cfg := tests.TestConfig(addr)
 	t.Log("config", cfg)
 	db, err := db.Open(context.Background(), config.DbConfig{
-		URL: ":memory:",
+		URL: dbURL,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -42,11 +50,16 @@ func Start(t *testing.T, addr string) TestRig {
 		t.Fatal(err)
 	}
 
+	wiki, err := setup.SetupWiki(cfg, db, search)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rig := TestRig{
-		Wiki: setup.SetupWiki(cfg, db, search),
+		Wiki: wiki,
 		Client: &http.Client{
 			Jar: jar,
 		},
+		DbURL: dbURL,
 	}
 
 	wg.Go(func() {
@@ -61,6 +74,14 @@ func Start(t *testing.T, addr string) TestRig {
 
 func (r *TestRig) Close(t *testing.T) {
 	if err := r.Wiki.Server.Shutdown(t.Context()); err != nil {
-		t.Error(err)
+		t.Errorf("failed to shutdown test server: %v", err)
+	}
+
+	if err := r.Wiki.DB.Close(); err != nil {
+		t.Errorf("failed to close test database: %v", err)
+	}
+
+	if err := os.Remove(r.DbURL); err != nil {
+		t.Errorf("failed to remove test database file: %v", err)
 	}
 }

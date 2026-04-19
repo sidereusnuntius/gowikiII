@@ -13,7 +13,7 @@ import (
 )
 
 func Open(ctx context.Context, config config.DbConfig) (handle *sql.DB, err error) {
-	url := config.URL + "?_journal=WAL&_timeout=5000&_fk=true"
+	url := config.URL + "?_journal=WAL&_timeout=5000&_fk=true" // TODO: improve this
 	handle, err = sql.Open("sqlite3", url)
 	if err != nil {
 		err = fmt.Errorf("failed to open database connection: %w", err)

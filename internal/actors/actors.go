@@ -14,6 +14,7 @@ import (
 type KeyStore interface {
 	GenerateKeyPair(ctx context.Context, actorID int64, actorURI string, keyType model.KeyType) error
 	SavePublicKey(ctx context.Context, key *model.PublicKey) error
+	PublicKeyExists(ctx context.Context, keyIRI string) (bool, error)
 }
 
 type Actors struct {
@@ -68,9 +69,17 @@ func (a *Actors) CacheRemoteActor(ctx context.Context, actor activitystreams.Act
 		}
 
 		key := actor.PublicKey
-		key.OwnerID = actorInternal.ID
+		exists, err := a.Keys.PublicKeyExists(ctx, key.URI)
+		if err != nil {
+			return err
+		}
 
-		return a.Keys.SavePublicKey(ctx, &key)
+		if !exists {
+			key.OwnerID = actorInternal.ID
+			return a.Keys.SavePublicKey(ctx, &key)
+		}
+
+		return nil
 	})
 }
 
@@ -119,4 +128,8 @@ func (a *Actors) GetLocalActor(ctx context.Context, username string) (model.Acto
 
 func (a *Actors) GetActorByID(ctx context.Context, id int64) (model.Actor, error) {
 	return a.Store.GetActorByID(ctx, id)
+}
+
+func (a *Actors) GetActorByIRI(ctx context.Context, iri string) (model.Actor, error) {
+	return a.Store.GetActorByIRI(ctx, iri)
 }

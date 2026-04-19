@@ -1,24 +1,26 @@
 package federation
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
-	"github.com/sidereusnuntius/gowiki/internal/keystore"
 	"github.com/sidereusnuntius/gowiki/internal/model"
+	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 	"github.com/sidereusnuntius/gowiki/internal/sanitize"
+	"github.com/sidereusnuntius/gowiki/internal/security"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 type FedGateway struct {
 	Actors     ActorService
-	Keys       *keystore.KeyStore
+	Keys       *security.Security
 	Articles   ArticleService
 	Federation *Federation
 }
 
-func NewGateway(federation *Federation, articles ArticleService, actors ActorService, keys *keystore.KeyStore) *FedGateway {
+func NewGateway(federation *Federation, articles ArticleService, actors ActorService, keys *security.Security) *FedGateway {
 	return &FedGateway{
 		Actors:     actors,
 		Keys:       keys,
@@ -29,6 +31,7 @@ func NewGateway(federation *Federation, articles ArticleService, actors ActorSer
 
 func (fg *FedGateway) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /u/{username}", fg.GetActor)
+	mux.HandleFunc("GET /u/{username}/main-key", fg.GetActor) // TODO: return only basic information about the actor.
 	mux.HandleFunc("GET /a/{slug}", fg.GetArticle)
 	mux.HandleFunc("POST /inbox", fg.SignedMiddleware(fg.Inbox))
 }
@@ -80,9 +83,31 @@ func (fg *FedGateway) SignedMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			w.Write([]byte("invalid signature")) // TODO: improve error handling
 		}
 
+		next.ServeHTTP(w, r)
 	}
 }
 
 func (fg *FedGateway) Inbox(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 
+	// TODO: better handle errors.
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		wikilog.Logger.Error().Err(err).Msg("failed to read activity received at inbox")
+		return
+	}
+
+	activity, err := activitystreams.ReadActivity(body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		wikilog.Logger.Error().Err(err).Msg("failed to parse activity received at inbox")
+		return
+	}
+
+	if err = fg.Federation.ProcessActivity(r.Context(), activity); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		wikilog.Logger.Error().Err(err).Msgf("failed to process %s activity", activity.Type)
+		return
+	}
 }

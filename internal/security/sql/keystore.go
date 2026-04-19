@@ -20,9 +20,9 @@ func New(db *sql.DB) *SqliteKeyStore {
 }
 
 const (
-	insertPublicKey  = "INSERT INTO public_keys (iri, owner_id, type, key_pem) VALUES (?, ?, ?, ?)"
-	insertPrivateKey = "INSERT INTO private_keys (key_pem, owner_id, type) VALUES (?, ?, ?)"
-	selectPublicKey  = `SELECT
+	insertPublicKey    = "INSERT INTO public_keys (iri, owner_id, type, key_pem) VALUES (?, ?, ?, ?)"
+	insertPrivateKey   = "INSERT INTO private_keys (key_pem, owner_id, type) VALUES (?, ?, ?)"
+	selectPublicKeyTpl = `SELECT
 		pk.id,
 		pk.iri,
 		owner_id,
@@ -30,15 +30,39 @@ const (
 		pk.type,
 		key_pem
 		FROM public_keys pk
-		LEFT JOIN actors a ON a.id = pk.owner_id
-		WHERE pk.iri = ?
-		LIMIT 1
-		`
+		LEFT JOIN actors a ON a.id = pk.owner_id`
+	selectPublicKeyByKeyIRI    = selectPublicKeyTpl + ` WHERE pk.iri = ? LIMIT 1`
+	selectPrivateKeyByOwnerIRI = `SELECT
+		k.id,
+		k.key_pem,
+		k.owner_id,
+		k.type,
+		pk.iri
+		FROM private_keys k
+		JOIN actors a ON k.owner_id = a.id
+		JOIN public_keys pk ON pk.owner_id = a.id
+		WHERE a.uri = ? LIMIT 1`
+	publicKeyExists = "SELECT EXISTS(SELECT 1 FROM public_keys WHERE iri = ?)"
 )
 
-func (s *SqliteKeyStore) GetPublicKey(ctx context.Context, keyIRI string) (model.PublicKey, error) {
-	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectPublicKey, keyIRI)
+func (s *SqliteKeyStore) PublicKeyExists(ctx context.Context, keyIRI string) (bool, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, publicKeyExists, keyIRI)
 
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, sqlhelpers.HandleErr(err)
+	}
+
+	return exists, nil
+}
+
+func (s *SqliteKeyStore) GetPublicKey(ctx context.Context, keyIRI string) (model.PublicKey, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectPublicKeyByKeyIRI, keyIRI)
+
+	return scanPublicKey(row)
+}
+
+func scanPublicKey(row *sql.Row) (model.PublicKey, error) {
 	var (
 		key        model.PublicKey
 		pkType     sql.NullInt16
@@ -64,6 +88,31 @@ func (s *SqliteKeyStore) GetPublicKey(ctx context.Context, keyIRI string) (model
 
 	if pkType.Valid {
 		key.Type = model.KeyType(pkType.Int16)
+	}
+
+	return key, nil
+}
+
+func (s *SqliteKeyStore) GetPrivateKey(ctx context.Context, ownerIRI string) (model.PrivateKey, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectPrivateKeyByOwnerIRI, ownerIRI)
+	var (
+		key     model.PrivateKey
+		keyType sql.NullInt16
+	)
+
+	err := row.Scan(
+		&key.ID,
+		&key.Pem,
+		&key.OwnerID,
+		&keyType,
+		&key.PublicKeyIRI,
+	)
+	if err != nil {
+		return model.PrivateKey{}, sqlhelpers.HandleErr(err)
+	}
+
+	if keyType.Valid {
+		key.Type = model.KeyType(keyType.Int16)
 	}
 
 	return key, nil

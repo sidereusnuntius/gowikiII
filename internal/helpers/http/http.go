@@ -11,7 +11,7 @@ var isFederatedRequest = regexp.MustCompile(`application\/((ld)|(activity))\+jso
 
 func FedWebMux(fed, web http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isFederatedRequest.MatchString(r.Header.Get("Accept")) {
+		if isFederatedRequest.MatchString(r.Header.Get("Accept")) || isFederatedRequest.MatchString(r.Header.Get("Content-Type")) {
 			fed.ServeHTTP(w, r)
 			return
 		}

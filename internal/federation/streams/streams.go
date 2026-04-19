@@ -18,7 +18,7 @@ type Base struct {
 type Activity struct {
 	Base
 	Actor  string `json:"actor,omitempty"`
-	Object any    `json:"omitempty"`
+	Object any    `json:"object,omitempty"`
 }
 
 type Endpoints struct {

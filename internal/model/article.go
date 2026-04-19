@@ -57,6 +57,7 @@ type ArticleRequest struct {
 type ArticleEdit struct {
 	ActorID    int64
 	ActorIRI   string
+	LocalActor bool
 	Slug       string
 	Host       string
 	IRI        string

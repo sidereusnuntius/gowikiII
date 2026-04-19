@@ -7,18 +7,18 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/articles"
 	"github.com/sidereusnuntius/gowiki/internal/federation"
 	hostsql "github.com/sidereusnuntius/gowiki/internal/federation/store"
-	"github.com/sidereusnuntius/gowiki/internal/keystore"
+	"github.com/sidereusnuntius/gowiki/internal/security"
 )
 
 func setupHostsStore(db *sql.DB) *hostsql.HostsStore {
 	return hostsql.New(db)
 }
 
-func setupActivityPubHandler(fed *federation.Federation, articles *articles.ArticleService, actors *actors.Actors, keys *keystore.KeyStore) *federation.FedGateway {
+func setupActivityPubHandler(fed *federation.Federation, articles *articles.ArticleService, actors *actors.Actors, security *security.Security) *federation.FedGateway {
 	return &federation.FedGateway{
 		Actors:     actors,
 		Articles:   articles,
-		Keys:       keys,
+		Keys:       security,
 		Federation: fed,
 	}
 }

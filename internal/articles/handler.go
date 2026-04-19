@@ -26,7 +26,7 @@ func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /a/{host}/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
 
 	mux.HandleFunc("POST /a/{slug}/edit", authhelpers.Authenticated(handler.Submit))
-	mux.HandleFunc("POST /a/{host}/{slug/edit", authhelpers.Authenticated(handler.Submit))
+	mux.HandleFunc("POST /a/{host}/{slug}/edit", authhelpers.Authenticated(handler.Submit))
 
 	mux.HandleFunc("POST /preview", authhelpers.Authenticated(handler.Preview))
 	mux.HandleFunc("GET /search", handler.Search)

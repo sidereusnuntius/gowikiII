@@ -1,4 +1,4 @@
-package keystore
+package security
 
 import (
 	"bytes"
@@ -34,26 +34,35 @@ func (ms *mockStore) SavePublicKey(ctx context.Context, key *model.PublicKey) er
 	return args.Error(0)
 }
 
+func (ms *mockStore) PublicKeyExists(ctx context.Context, keyIRI string) (bool, error) {
+	args := ms.Called(ctx, keyIRI)
+	return args.Get(0).(bool), args.Error(1)
+}
+
 func (ms *mockStore) SavePrivateKey(ctx context.Context, key *model.PrivateKey) error {
 	args := ms.Called(ctx, key)
 	return args.Error(0)
 }
 
+func (ms *mockStore) GetPrivateKey(ctx context.Context, ownerIRI string) (model.PrivateKey, error) {
+	args := ms.Called(ctx, ownerIRI)
+	return args.Get(0).(model.PrivateKey), args.Error(1)
+}
+
 var (
-	store     = new(mockStore)
-	client    = new(mocks.MockClient)
 	prefs     = []httpsig.Algorithm{httpsig.RSA_SHA256}
 	digestAlg = httpsig.DigestSha256
 	sigScheme = httpsig.Signature
-	expiresIn = 10 * time.Second
-	headers   = []string{httpsig.RequestTarget, "date", "digest"}
 )
 
-func initialize() (KeyStore, *mockStore, *mocks.MockClient) {
+func initialize(t *testing.T) (*Security, *mockStore, *mocks.MockClient) {
 	store := new(mockStore)
 	client := new(mocks.MockClient)
 
-	ks := New(tests.TestConfig("localhost:8080"), store, client)
+	ks, err := New(tests.TestConfig("localhost:8080"), store, client)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return ks, store, client
 }
 
@@ -199,7 +208,7 @@ func TestVerifySignature(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.title, func(t *testing.T) {
-			ks, store, client := initialize()
+			ks, store, client := initialize(t)
 
 			var storeReturn model.PublicKey
 			if c.storeErr == nil {
@@ -240,6 +249,38 @@ func TestVerifySignature(t *testing.T) {
 				client.AssertNotCalled(t, "FetchKey")
 			}
 		})
+	}
+}
+
+func TestSignRequest(t *testing.T) {
+	security, store, _ := initialize(t)
+
+	pub, priv, err := generateRSAKeyPair()
+	if err != nil {
+		t.Fatalf("generateRSAKeyPair(): %v", err)
+	}
+
+	actorId := "http://test.wiki/u/sally"
+	privateKey := model.PrivateKey{
+		ID:      1,
+		OwnerID: 1,
+		// Type: model.KeyType,
+		Pem:          priv,
+		PublicKeyIRI: actorId + "/main-key",
+	}
+
+	publicKey := createPublicKey("sally", pub)
+
+	body := []byte("Hello, world!")
+	store.On("GetPrivateKey", mock.Anything, actorId).Return(privateKey, nil)
+	req, err := security.signedRequest(t.Context(), "https://bio.wiki/inbox", body, actorId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	store.On("GetPublicKey", mock.Anything, privateKey.PublicKeyIRI).Return(publicKey, nil)
+	if err := security.VerifySignature(t.Context(), req); err != nil {
+		t.Errorf("ks.VerifySignature(): %v", err)
 	}
 }
 

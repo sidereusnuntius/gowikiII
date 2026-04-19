@@ -45,7 +45,11 @@ func main() {
 
 	config := tests.TestConfig("http://localhost:8080")
 
-	wiki := setup.SetupWiki(config, db, search)
+	wiki, err := setup.SetupWiki(config, db, search)
+	if err != nil {
+		wikilog.Logger.Fatal().Err(err).Msg("setup.SetupWiki(): failed to initialize wiki")
+		return
+	}
 	wikilog.Logger.Info().
 		Int("port", wiki.Config.Port).
 		Str("address", wiki.Config.Host).

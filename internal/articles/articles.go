@@ -17,6 +17,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 	"github.com/sidereusnuntius/gowiki/internal/search"
+	"github.com/sidereusnuntius/gowiki/internal/security"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
@@ -34,10 +35,12 @@ type ArticleService struct {
 	Diffs     *diffmatchpatch.DiffMatchPatch
 	Actors    Actors
 	Config    config.WikiConfig
-	Client    client.Client
+	// TODO: I think it's better to sign GET requests too, so maybe we create a SignedGet on the security package and have only security here.
+	Client   client.Client
+	Security *security.Security
 }
 
-func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, search *search.Search, client client.Client) *ArticleService {
+func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, search *search.Search, client client.Client, security *security.Security, actors Actors) *ArticleService {
 	return &ArticleService{
 		Search:    search,
 		Store:     store,
@@ -45,6 +48,8 @@ func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, 
 		Diffs:     diffmatchpatch.New(),
 		Config:    config,
 		Client:    client,
+		Security:  security,
+		Actors:    actors,
 	}
 }
 
@@ -191,13 +196,17 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 	as.normalizeEdit(&in)
 	// Validate
 
-	// User is trying to update a foreign article.
-	if in.Host != as.Config.Host {
-
+	actor, err := as.Actors.GetActorByID(ctx, in.ActorID)
+	if err != nil {
+		return err
 	}
 
+	in.ActorID = actor.ID
+	in.ActorIRI = actor.URI
+	in.LocalActor = true
+
 	var new bool
-	err := as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
+	err = as.TxManager.RunInTx(ctx, func(ctx context.Context) error {
 		article, err := as.Store.GetArticle(ctx, in.Slug, in.Host)
 		if err != nil {
 			if !errors.Is(err, wikierr.ErrNotFound) {
@@ -285,7 +294,7 @@ func (as *ArticleService) UpdateArticle(ctx context.Context, content model.Artic
 func (as *ArticleService) EditArticleContent(ctx context.Context, content *model.ArticleContent, edit model.ArticleEdit) error {
 	var err error
 
-	revision, _ := as.newRevision(content, &edit)
+	revision, patches := as.newRevision(content, &edit)
 
 	content.Content = edit.NewContent
 
@@ -300,7 +309,19 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 		return err
 	}
 
-	return as.Store.SaveRevision(ctx, &revision)
+	if err = as.Store.SaveRevision(ctx, &revision); err != nil {
+		return err
+	}
+
+	// This is a remote article; send a patch activity to the remote host
+	if edit.LocalActor && edit.Host != as.Config.Host {
+		patch := streams.PatchAS(content.Article.IRI, patches, &revision)
+
+		inbox := fmt.Sprintf("http://%s/inbox", edit.Host) // TODO: improve this.
+		return as.Security.PostSigned(ctx, inbox, patch, edit.ActorIRI)
+	}
+
+	return nil
 }
 
 // Homepage finds the homepage of the given wiki, if it exists. We expect each wiki to have a home article,
@@ -389,31 +410,6 @@ func (as *ArticleService) CacheRemoteArticle(ctx context.Context, articleId stri
 	}
 
 	return article, as.Search.IndexArticle(&article)
-}
-
-func (as *ArticleService) PatchRemoteArticle(ctx context.Context, edit *model.ArticleEdit) error {
-	req := model.ArticleRequest{
-		Slug: edit.Slug,
-		Host: edit.Host,
-	}
-
-	currContent, err := as.Store.GetArticleContent(ctx, &req)
-	if err != nil {
-		return err
-	}
-
-	actor, err := as.Actors.GetActorByID(ctx, edit.ActorID)
-	if err != nil {
-		return err
-	}
-
-	edit.ActorID = actor.ID
-	edit.ActorIRI = actor.URI
-	revision, patches := as.newRevision(&currContent, edit)
-	patch := streams.PatchAS(currContent.Article.IRI, patches, &revision)
-
-	// patch :=
-	return nil
 }
 
 func (as *ArticleService) newRevision(content *model.ArticleContent, edit *model.ArticleEdit) (revision model.Revision, patches string) {

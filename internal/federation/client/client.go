@@ -14,6 +14,7 @@ import (
 type Client interface {
 	Fetch(ctx context.Context, url string) ([]byte, error)
 	FetchKey(ctx context.Context, keyId string) (model.PublicKey, error)
+	Post(ctx context.Context, r *http.Request) error
 }
 
 type ApClient struct {
@@ -65,4 +66,18 @@ func (ac *ApClient) Fetch(ctx context.Context, url string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (ac *ApClient) Post(ctx context.Context, r *http.Request) error {
+	res, err := ac.Client.Do(r)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+	if res.StatusCode >= http.StatusBadRequest {
+		return fmt.Errorf("request failed with code %d", res.StatusCode)
+	}
+
+	return nil
 }
