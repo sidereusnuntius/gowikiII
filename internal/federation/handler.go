@@ -4,10 +4,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
+	"github.com/sidereusnuntius/gowiki/internal/model/streams"
 	"github.com/sidereusnuntius/gowiki/internal/sanitize"
 	"github.com/sidereusnuntius/gowiki/internal/security"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
@@ -34,6 +34,7 @@ func (fg *FedGateway) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /u/{username}/main-key", fg.GetActor) // TODO: return only basic information about the actor.
 	mux.HandleFunc("GET /a/{slug}", fg.GetArticle)
 	mux.HandleFunc("POST /inbox", fg.SignedMiddleware(fg.Inbox))
+	mux.HandleFunc("GET /", fg.InstanceActor)
 }
 
 func (fg *FedGateway) GetArticle(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +55,21 @@ func (fg *FedGateway) GetArticle(w http.ResponseWriter, r *http.Request) {
 	if err = httphelpers.WriteActivity(w, articleAS); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		wikilog.Logger.Error().Err(err).Msg("httphelpers.WriteActivity(w, articleAS)")
+	}
+}
+
+func (fg *FedGateway) InstanceActor(w http.ResponseWriter, r *http.Request) {
+	actor, err := fg.Actors.GetLocalActor(r.Context(), fg.Keys.Config.Name)
+	if err != nil {
+		// do something
+		wikilog.Logger.Error().Err(err).Msg("fg.Actors.GetLocalActor()")
+		return
+	}
+
+	actorAS := streams.ActorAS(&actor)
+
+	if err = httphelpers.WriteActivity(w, actorAS); err != nil {
+		wikilog.Logger.Error().Err(err).Msg("GetActor()")
 	}
 }
 

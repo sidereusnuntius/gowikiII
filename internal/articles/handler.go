@@ -1,7 +1,6 @@
 package articles
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"

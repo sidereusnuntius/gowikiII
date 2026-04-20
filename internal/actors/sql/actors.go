@@ -65,6 +65,35 @@ const (
 	selectSharedInboxId = "SELECT id FROM shared_inboxes WHERE uri = ?"
 	insertSharedInbox   = "INSERT INTO shared_inboxes (uri) VALUES (?) RETURNING id"
 	actorExists         = "SELECT EXISTS(SELECT 1 FROM actors WHERE uri = ?)"
+	insertFollow        = `INSERT INTO follows (
+		iri,
+		follower_id,
+		followee_id,
+		accepted,
+		published
+	) VALUES (?, ?, ?, ?, ?) RETURNING id`
+	selectFollow = `SELECT
+		f.id,
+		f.iri,
+		follower_id,
+		follower.uri,
+		followee_id,
+		followee.uri,
+		f.accepted,
+		f.published
+	FROM follows f
+	JOIN actors follower ON follower.id = f.follower_id
+	JOIN actors followee ON followee.id = f.followee_id
+	WHERE iri = ?
+	LIMIT 1
+	`
+	followSetAccepted = "UPDATE follows SET accepted = ? WHERE iri = ?"
+	selectFollowers   = `SELECT
+		followers.uri
+	FROM follows
+	JOIN actors followers ON follows.follower_id = followers.id
+	JOIN actors followee ON follows.followee_id = followee.id
+	WHERE followee.uri = ? AND follows.accepted`
 )
 
 type ActorsStore struct {
@@ -160,6 +189,63 @@ func (s *ActorsStore) GetActorByIRI(ctx context.Context, iri string) (model.Acto
 	return scanActor(row)
 }
 
+func (s *ActorsStore) SaveFollow(ctx context.Context, follow *model.Follow) error {
+	result, err := txdb.GetExecutor(ctx, s.DB).ExecContext(ctx, insertFollow,
+		follow.IRI,
+		follow.FollowerID,
+		follow.FolloweeID,
+		follow.Accepted,
+		follow.Published.Unix(),
+	)
+	if err != nil {
+		return sqlhelpers.HandleErr(err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return sqlhelpers.HandleErr(err)
+	}
+
+	follow.ID = id
+	return nil
+}
+
+func (s *ActorsStore) GetFollow(ctx context.Context, iri string) (model.Follow, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectFollow, iri)
+
+	var (
+		follow       model.Follow
+		acceptedBool sql.NullBool
+		published    int64
+	)
+
+	err := row.Scan(
+		&follow.ID,
+		&follow.IRI,
+		&follow.FollowerID,
+		&follow.FollowerIRI,
+		&follow.FolloweeID,
+		&follow.FolloweeIRI,
+		&acceptedBool,
+		&published,
+	)
+	if err != nil {
+		return model.Follow{}, sqlhelpers.HandleErr(err)
+	}
+
+	if acceptedBool.Valid {
+		follow.Accepted = acceptedBool.Bool
+	}
+
+	follow.Published = time.Unix(published, 0)
+	return follow, nil
+}
+
+func (s *ActorsStore) SetFollowAccepted(ctx context.Context, iri string, accepted bool) error {
+	_, err := txdb.GetExecutor(ctx, s.DB).ExecContext(ctx, followSetAccepted, accepted, iri)
+	return sqlhelpers.HandleErr(err)
+}
+
 func scanActor(row *sql.Row) (model.Actor, error) {
 	var (
 		actor                                    model.Actor
@@ -244,4 +330,29 @@ func scanActor(row *sql.Row) (model.Actor, error) {
 	}
 
 	return actor, nil
+}
+
+func (s *ActorsStore) GetFollowers(ctx context.Context, actorIRI string) ([]string, error) {
+	rows, err := txdb.GetExecutor(ctx, s.DB).QueryContext(ctx, selectFollowers, actorIRI)
+	if err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	var (
+		iris = make([]string, 0)
+		curr string
+	)
+	for rows.Next() {
+		if err = rows.Scan(&curr); err != nil {
+			return nil, sqlhelpers.HandleErr(err)
+		}
+
+		iris = append(iris, curr)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	return iris, nil
 }

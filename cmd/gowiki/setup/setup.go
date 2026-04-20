@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/federation"
 	"github.com/sidereusnuntius/gowiki/internal/federation/client"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
+	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
@@ -25,11 +27,12 @@ type Wiki struct {
 	AuthHandler     *auth.Handler
 	ArticlesHandler *articles.Handler
 	DefaultHandler  *defaulthandler.DefaultHandler
+	Processor       *processor.Processor
 	Mux             *http.ServeMux
 	Server          *http.Server
 }
 
-func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search) (Wiki, error) {
+func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, processor *processor.Processor) (Wiki, error) {
 	// Transaction manager.
 	tm := &txdb.TxManager{
 		DB: db,
@@ -49,17 +52,24 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search) (Wik
 	hostsStore := setupHostsStore(db)
 
 	// Setup services.
-	actors := setupActorsService(config, actorsStore, security, tm)
+	actors := setupActorsService(config, actorsStore, security, tm, processor.Client())
 	auth := setupAuth(authStore, sessionStore, actors, tm)
 	articles := setupArticles(config, articlesStore, tm, search, client, security, actors)
-	federation := federation.New(config, hostsStore, client, actors, articles, nil)
+	fed := federation.New(config, hostsStore, tm, client, actors, articles, processor.Client())
+
+	if err = actors.Initialize(context.Background()); err != nil {
+		return Wiki{}, err
+	}
+
+	security.RegisterWorkers(processor.Workers)
+	fed.RegisterWorkers(processor)
 
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles)
 	authHandler := setupAuthHandler(auth)
 	defaultHandler := defaulthandler.New(articles)
 
-	activityPubHandler := setupActivityPubHandler(federation, articles, actors, security)
+	activityPubHandler := setupActivityPubHandler(fed, articles, actors, security)
 
 	// Wire HTTP routing and handlers.
 	mux := http.NewServeMux()
@@ -82,6 +92,11 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search) (Wik
 		Handler: fedweb,
 	}
 
+	err = processor.Start(context.Background())
+	if err != nil {
+		return Wiki{}, err
+	}
+
 	return Wiki{
 		Config:          config,
 		DB:              db,
@@ -90,6 +105,7 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search) (Wik
 		AuthHandler:     authHandler,
 		ArticlesHandler: articlesHandler,
 		DefaultHandler:  defaultHandler,
+		Processor:       processor,
 		Mux:             mux,
 		Server:          server,
 	}, nil

@@ -12,16 +12,14 @@ import (
 
 type Processor struct {
 	client  *river.Client[*sql.Tx]
-	workers *river.Workers
+	Workers *river.Workers
 }
 
-func (p *Processor) Client() Client {
-	return &RiverClient{
-		Client: p.client,
-	}
+func Register[T river.JobArgs](processor *Processor, worker river.Worker[T]) {
+	river.AddWorker(processor.Workers, worker)
 }
 
-func SqliteProcessor(ctx context.Context, db *sql.DB) (Processor, error) {
+func SqliteProcessor(ctx context.Context, db *sql.DB) (*Processor, error) {
 	wikilog.Logger.Debug().Msg("initializing Sqlite River queue")
 	workers := river.NewWorkers()
 
@@ -29,12 +27,12 @@ func SqliteProcessor(ctx context.Context, db *sql.DB) (Processor, error) {
 
 	migrator, err := rivermigrate.New(driver, nil)
 	if err != nil {
-		return Processor{}, err
+		return nil, err
 	}
 
 	_, err = migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
 	if err != nil {
-		return Processor{}, err
+		return nil, err
 	}
 
 	client, err := river.NewClient(driver, &river.Config{
@@ -44,11 +42,25 @@ func SqliteProcessor(ctx context.Context, db *sql.DB) (Processor, error) {
 		Workers: workers,
 	})
 	if err != nil {
-		return Processor{}, err
+		return nil, err
 	}
 
-	return Processor{
+	return &Processor{
 		client:  client,
-		workers: workers,
+		Workers: workers,
 	}, nil
+}
+
+func (p *Processor) Client() Client {
+	return &RiverClient{
+		Client: p.client,
+	}
+}
+
+func (p *Processor) Start(ctx context.Context) error {
+	return p.client.Start(ctx)
+}
+
+func (p *Processor) Stop(ctx context.Context) error {
+	return p.client.Stop(ctx)
 }

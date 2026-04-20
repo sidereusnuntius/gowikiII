@@ -14,6 +14,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/cmd/gowiki/setup"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/db"
+	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	"github.com/sidereusnuntius/gowiki/internal/tests"
 )
@@ -51,7 +52,12 @@ func Start(t *testing.T, addr string) TestRig {
 		t.Fatal(err)
 	}
 
-	wiki, err := setup.SetupWiki(cfg, db, search)
+	processor, err := processor.SqliteProcessor(t.Context(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wiki, err := setup.SetupWiki(cfg, db, search, processor)
 	if err != nil {
 		t.Fatal(err)
 	}

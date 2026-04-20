@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
+	"github.com/sidereusnuntius/gowiki/internal/model/streams"
 )
 
 func TestActor(t *testing.T) {

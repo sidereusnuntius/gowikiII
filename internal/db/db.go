@@ -14,11 +14,9 @@ import (
 )
 
 func Open(ctx context.Context, config config.DbConfig) (handle *sql.DB, err error) {
-	args := new(url.Values)
-	if !config.Test {
-		args.Add("_journal", "WAL")
-		args.Add("_timeout", "5000") // Make this configurable
-	}
+	args := make(url.Values)
+	args.Add("_journal", "WAL")
+	args.Add("_timeout", "5000") // Make this configurable
 
 	url := fmt.Sprintf("%s?%s", config.URL, args.Encode()) // TODO: improve this
 	handle, err = sql.Open("sqlite3", url)

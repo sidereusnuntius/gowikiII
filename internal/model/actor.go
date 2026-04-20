@@ -48,3 +48,14 @@ type PrivateKey struct {
 	Pem          []byte
 	PublicKeyIRI string
 }
+
+type Follow struct {
+	ID          int64
+	IRI         string
+	FollowerID  int64
+	FollowerIRI string
+	FolloweeID  int64
+	FolloweeIRI string
+	Accepted    bool
+	Published   time.Time
+}

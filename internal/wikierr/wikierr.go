@@ -12,6 +12,7 @@ const (
 	ErrNotFound WikierrCode = iota
 	ErrInternal
 	ErrMissing
+	ErrForbidden
 )
 
 var (

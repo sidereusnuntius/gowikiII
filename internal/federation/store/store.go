@@ -7,6 +7,7 @@ import (
 	sqlhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/sql"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 const (
@@ -46,6 +47,7 @@ func (hs *HostsStore) GetHost(ctx context.Context, hostname string) (model.Host,
 	)
 	err := row.Scan(
 		&host.ID,
+		&host.Host,
 		&status,
 		&host.IsWiki,
 		&actorId,
@@ -95,6 +97,7 @@ func (hs *HostsStore) SaveHost(ctx context.Context, host *model.Host) error {
 		}
 	}
 
+	wikilog.Logger.Debug().Str("host", host.Host).Msg("saved host")
 	return nil
 }
 

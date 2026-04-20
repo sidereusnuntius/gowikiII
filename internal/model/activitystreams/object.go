@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sidereusnuntius/gowiki/internal/federation/streams"
+	"github.com/sidereusnuntius/gowiki/internal/model/streams"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/valyala/fastjson"
 )

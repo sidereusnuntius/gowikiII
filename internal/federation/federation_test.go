@@ -1,12 +1,10 @@
 package federation
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/sidereusnuntius/gowiki/internal/mocks"
 	"github.com/sidereusnuntius/gowiki/internal/model"
-	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/stretchr/testify/mock"
@@ -27,7 +25,7 @@ func initialize() state {
 	actors := new(mocks.MockActors)
 	articles := new(mocks.MockArticles)
 	publisher := new(mocks.MockPublisher)
-	federation := New(tests.TestConfig("test.wiki"), store, client, actors, articles, publisher)
+	federation := New(tests.TestConfig("test.wiki"), store, nil, client, actors, articles, publisher)
 
 	return state{
 		store:      store,
@@ -116,9 +114,8 @@ func TestCheckOriginHost(t *testing.T) {
 				}
 				state.store.On("SaveHost", mock.Anything, &savedhost).Return(c.storeSaveErr)
 
-				args := processor.FetchActorArgs{
-					IRI:           fmt.Sprintf("http://%s", c.host),
-					InstanceActor: true,
+				args := DiscoverInstanceArgs{
+					Host: c.host,
 				}
 				state.publisher.On("Publish", mock.Anything, args).Return(c.publisherErr)
 			}

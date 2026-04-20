@@ -40,7 +40,7 @@ func (a *Activity) Actor() (string, error) {
 		return "", wikierr.Missing
 	}
 
-	return string(actorId), wikierr.Missing
+	return string(actorId), nil
 }
 
 func (a *Activity) ObjectId() (string, error) {

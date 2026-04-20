@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/model/activitystreams"
 	"github.com/sidereusnuntius/gowiki/internal/processor"
+	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 )
 
@@ -18,9 +20,11 @@ type Client interface {
 }
 
 type ActorService interface {
-	CacheRemoteActor(ctx context.Context, actor activitystreams.Actor) error
+	CacheRemoteActor(ctx context.Context, actor activitystreams.Actor) (model.Actor, error)
 	ActorExists(ctx context.Context, id string) (bool, error)
 	GetLocalActor(ctx context.Context, username string) (model.Actor, error)
+	Follow(ctx context.Context, follow *model.Follow) error
+	AcceptFollow(ctx context.Context, actorIRI, followIRI string) error
 }
 
 type ArticleService interface {
@@ -29,7 +33,9 @@ type ArticleService interface {
 }
 
 const (
-	ActivityPatch = "Patch"
+	ActivityPatch  = "Patch"
+	ActivityFollow = "Follow"
+	ActivityAccept = "Accept"
 )
 
 type Federation struct {
@@ -39,9 +45,10 @@ type Federation struct {
 	Client    Client
 	Store     Store
 	Publisher processor.Client
+	TxManager *txdb.TxManager
 }
 
-func New(config config.WikiConfig, store Store, client Client, actors ActorService, articles ArticleService, publisher processor.Client) *Federation {
+func New(config config.WikiConfig, store Store, manager *txdb.TxManager, client Client, actors ActorService, articles ArticleService, publisher processor.Client) *Federation {
 	return &Federation{
 		Config:    config,
 		Actors:    actors,
@@ -49,6 +56,7 @@ func New(config config.WikiConfig, store Store, client Client, actors ActorServi
 		Client:    client,
 		Store:     store,
 		Publisher: publisher,
+		TxManager: manager,
 	}
 }
 
@@ -67,6 +75,17 @@ func (f *Federation) InstanceInbox(r *http.Request) error {
 }
 
 func (f *Federation) EnsureActor(ctx context.Context, actorId string) error {
+	iri, err := url.Parse(actorId)
+	if err != nil {
+		return err
+	}
+
+	// TODO: check if host is blocked
+	_, err = f.CheckOriginHost(ctx, iri.Host)
+	if err != nil {
+		return err
+	}
+
 	cached, err := f.Actors.ActorExists(ctx, actorId)
 	if err != nil {
 		return err
@@ -93,7 +112,8 @@ func (f *Federation) EnsureActor(ctx context.Context, actorId string) error {
 		return err
 	}
 
-	return f.Actors.CacheRemoteActor(ctx, actor)
+	_, err = f.Actors.CacheRemoteActor(ctx, actor)
+	return err
 }
 
 // CheckOriginHost verifies whether an activity coming from the host is allowed. It will first check the local store;
@@ -115,9 +135,8 @@ func (f *Federation) CheckOriginHost(ctx context.Context, name string) (bool, er
 			return false, err
 		}
 
-		args := processor.FetchActorArgs{
-			IRI:           "http://" + host.Host,
-			InstanceActor: true,
+		args := DiscoverInstanceArgs{
+			Host: host.Host,
 		}
 
 		// Fetch instance actor asynchronously.

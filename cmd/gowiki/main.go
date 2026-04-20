@@ -8,6 +8,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/cmd/gowiki/setup"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/db"
+	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
@@ -43,9 +44,15 @@ func main() {
 		search.Close()
 	}()
 
+	processor, err := processor.SqliteProcessor(ctx, db)
+	if err != nil {
+		wikilog.Logger.Fatal().Err(err).Msg("processor.SqliteProcessor()")
+		return
+	}
+
 	config := tests.TestConfig("http://localhost:8080")
 
-	wiki, err := setup.SetupWiki(config, db, search)
+	wiki, err := setup.SetupWiki(config, db, search, processor)
 	if err != nil {
 		wikilog.Logger.Fatal().Err(err).Msg("setup.SetupWiki(): failed to initialize wiki")
 		return
