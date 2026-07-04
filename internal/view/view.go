@@ -2,25 +2,25 @@ package view
 
 import "time"
 
-type ArticleHeader struct {
-	ArticleURL string
-	EditURL string
-	HistoryURL string
+type PageControl struct {
+	Selected bool
+	URL      string
+	Label    string
 }
 
 type Editor struct {
-	ArticleHeader
-	Slug string
-	Host string
-	Content string
-	EditSummary string
+	Controls     [3]PageControl
+	Slug         string
+	Host         string
+	Content      string
+	EditSummary  string
 	LastModified time.Time
-	ActionURL string
+	ActionURL    string
 }
 
 type Article struct {
-	ArticleHeader
-	Slug string
-	Host string
-	Content string
+	Controls [3]PageControl
+	Slug     string
+	Host     string
+	Content  string
 }

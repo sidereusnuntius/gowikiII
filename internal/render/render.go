@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
@@ -67,6 +68,16 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 
 func (p *Page) GetString(name string) string {
 	return p.req.FormValue(name)
+}
+
+func (p *Page) GetInt64(name string) int64 {
+	n := p.req.FormValue(name)
+	if len(n) == 0 {
+		return 0
+	}
+
+	n64, _ := strconv.ParseInt(n, 10, 64)
+	return n64
 }
 
 func (p *Page) AddTemplate(paths ...string) {

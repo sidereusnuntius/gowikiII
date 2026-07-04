@@ -48,6 +48,6 @@ func (h *DefaultHandler) Home(w http.ResponseWriter, r *http.Request) {
 
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
-	p.AddTemplate("articles/header.html")
+	p.AddTemplate("tabs.html")
 	p.Render("articles/index.html")
 }

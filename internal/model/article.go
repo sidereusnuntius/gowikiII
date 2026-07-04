@@ -2,9 +2,24 @@ package model
 
 import "time"
 
+type ArticleFilter struct {
+	Query    string
+	NextPage int64
+}
+
+type SearchResults struct {
+	Query   string
+	Results []SearchResult
+
+	HasNextPage bool
+	Next        int64
+	Total       int
+}
+
 type SearchResult struct {
-	URL   string
-	Title string
+	URL     string
+	Summary string
+	Title   string
 }
 
 type Article struct {

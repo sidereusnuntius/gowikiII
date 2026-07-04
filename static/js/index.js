@@ -1,20 +1,20 @@
 function onChangeInputHandler(event) {
-  console.log(event)
+  console.log(event);
   if (!event.target) {
     return;
   }
   const input = event.target;
-  input.removeAttribute('aria-invalid');
+  input.removeAttribute("aria-invalid");
   const label = document.querySelector(`.error-msg[for=${input.id}]`);
   if (label) {
-    label.textContent = '';
+    label.textContent = "";
   }
 }
 
 function addEventListeners() {
-  document.querySelectorAll('input').forEach((input) => {
-    input.addEventListener('input', (event) => onChangeInputHandler(event))
-  })
+  document.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", (event) => onChangeInputHandler(event));
+  });
 }
 
 function handleCode(event) {
@@ -41,7 +41,8 @@ function handleCode(event) {
           if (input) {
             input.setAttribute("aria-invalid", "true");
             input.setCustomValidity(value);
-            document.querySelector(`.error-msg[for=${input.id}]`).textContent = value;
+            document.querySelector(`.error-msg[for=${input.id}]`).textContent =
+              value;
           }
         }
       });
@@ -57,6 +58,7 @@ function handleCode(event) {
 }
 
 document.addEventListener("fx:after", (event) => {
+  console.log(event);
   addEventListeners();
   if (!event || !event.detail) {
     return;
@@ -93,5 +95,40 @@ document.addEventListener("fx:after", (event) => {
   console.log(event);
 });
 
+document.addEventListener("fx:after", (event) => {
+  if (event.detail.cfg.method === "GET") {
+    console.log("pushing state");
+    window.history.replaceState(
+      { fixi: true, url: location.href },
+      "",
+      location.href,
+    );
+    window.history.pushState(
+      { fixi: true, url: event.detail.cfg.action },
+      "",
+      event.detail.cfg.action,
+    );
+  }
+});
+
+window.addEventListener("popstate", async (event) => {
+  console.log(event);
+  console.log("popping the cherry");
+  if (event.state.fixi && event.state.url) {
+    const headers = new Headers();
+    headers.append("fx-request", true);
+    const res = await fetch(event.state.url, {
+      method: "GET",
+      headers: headers,
+    });
+
+    const content = document.querySelector("#content");
+    if (content) {
+      content.innerHTML = await res.text();
+      document.dispatchEvent(new CustomEvent("fx:process"));
+    }
+  }
+});
+
 console.log("hello from the other side! :)");
-addEventListeners()
+addEventListeners();

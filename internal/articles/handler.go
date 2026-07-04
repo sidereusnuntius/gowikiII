@@ -13,6 +13,12 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
+const (
+	readTab = iota
+	historyTab
+	editTab
+)
+
 type Handler struct {
 	ArticleService *ArticleService
 }
@@ -53,16 +59,20 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	nextPage := p.GetInt64("next")
 
-	articles, err := h.ArticleService.SearchArticles(p.Ctx, query)
+	filter := model.ArticleFilter{
+		Query:    query,
+		NextPage: nextPage,
+	}
+	result, err := h.ArticleService.SearchArticles(p.Ctx, filter)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.SearchArticles()")
 		p.HandleError(err)
 		return
 	}
-	fmt.Println(articles)
 
-	p.Content.Data = articles
+	p.Content.Data = result
 
 	p.Render("search/results.html")
 }
@@ -89,15 +99,15 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Article{
-		Slug:          content.Article.Slug,
-		Host:          content.Article.Host,
-		Content:       content.Content,
-		ArticleHeader: articleHeader(slug),
+		Slug:     content.Article.Slug,
+		Host:     content.Article.Host,
+		Content:  content.Content,
+		Controls: articleControls(content.Article.Slug, readTab),
 	}
 
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
-	p.AddTemplate("articles/header.html")
+	p.AddTemplate("tabs.html")
 	p.Render("articles/index.html")
 }
 
@@ -122,19 +132,19 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Editor{
-		Slug:          content.Article.Slug,
-		Host:          content.Article.Host,
-		Content:       content.Content,
-		EditSummary:   "",
-		LastModified:  content.Updated,
-		ActionURL:     "/a/" + slug + "/edit",
-		ArticleHeader: articleHeader(content.Article.Slug),
+		Slug:         content.Article.Slug,
+		Host:         content.Article.Host,
+		Content:      content.Content,
+		EditSummary:  "",
+		LastModified: content.Updated,
+		ActionURL:    "/a/" + slug + "/edit",
+		Controls:     articleControls(content.Article.Slug, editTab),
 	}
 
 	p.Content.Title = view.Slug
 	p.Content.Data = view
 	p.AddTemplate("articles/write.html")
-	p.AddTemplate("articles/header.html")
+	p.AddTemplate("tabs.html")
 	p.Render("articles/index.html")
 }
 
@@ -179,11 +189,14 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.Read(w, r)
 }
 
-func articleHeader(slug string) view.ArticleHeader {
+func articleControls(slug string, currentTab int) [3]view.PageControl {
 	url := "/a/" + slug
-	return view.ArticleHeader{
-		ArticleURL: url,
-		HistoryURL: url + "/history",
-		EditURL:    url + "/edit",
+	tabs := [3]view.PageControl{
+		{URL: url, Label: "Read"},
+		{URL: url + "/history", Label: "History"},
+		{URL: url + "/edit", Label: "Edit"},
 	}
+
+	tabs[currentTab].Selected = true
+	return tabs
 }

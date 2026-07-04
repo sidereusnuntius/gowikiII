@@ -1,5 +1,6 @@
 {{ define "content" }}
 <form
+    id="login-form"
     action="/login"
     method="POST"
     fx-target="#page-container"
@@ -7,14 +8,14 @@
     fx-action="/login"
     fx-method="POST"
 >
-    <p class="error-message" aria-live="assertive"></p>
-    <div class="form-field">
-        <label for="email">Email</label>
+    <label for="email">Email</label>
+    <div class="auth-field">
+        <p class="error-message" aria-live="assertive"></p>
         <input id="email" name="email" type="email" required />
     </div>
 
-    <div class="form-field">
-        <label for="password">Password</label>
+    <label for="password">Password</label>
+    <div class="auth-field">
         <input id="password" name="password" type="password" required />
         <label class="error-msg" for="password" aria-live="assertive"></label>
     </div>

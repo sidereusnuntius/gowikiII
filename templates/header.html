@@ -4,12 +4,35 @@
         <ul>
             <li>
                 <a
+                    class="nav-item"
                     href="/"
                     fx-action="/"
                     fx-target="#content"
                     fx-method="GET"
                     fx-swap="innerHTML"
                     >Home</a
+                >
+            </li>
+            <li>
+                <a
+                    class="nav-item"
+                    href="/recent"
+                    fx-action="/recent"
+                    fx-target="#content"
+                    fx-method="GET"
+                    fx-swap="innerHTML"
+                    >Recent changes</a
+                >
+            </li>
+            <li>
+                <a
+                    class="nav-item"
+                    href="/media"
+                    fx-action="/media"
+                    fx-target="#content"
+                    fx-method="GET"
+                    fx-swap="innerHTML"
+                    >Media</a
                 >
             </li>
         </ul>
@@ -21,14 +44,39 @@
             fx-target="#content"
             fx-swap="innerHTML"
         >
-            <input id="query" name="query" type="text" required />
-            <button type="submit">Search</button>
+            <svg
+                id="search-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#000000"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+                <path d="M21 21l-6 -6" />
+            </svg>
+            <input id="query" name="query" type="text" placeholder="Search" />
         </form>
         <ul>
             {{ if .Authenticated }}
-            <li><a href="/">{{.Session.User.Username}}</a></li>
             <li>
                 <a
+                    class="nav-item"
+                    href="/u/{{.Session.User.Username}}"
+                    fx-action="/u/{{.Session.User.Username}}"
+                    fx-method="GET"
+                    fx-target="#page-container"
+                    fx-swap="innerHTML"
+                    >{{.Session.User.Username}}</a
+                >
+            </li>
+            <li>
+                <a
+                    class="nav-item"
                     href="/logout"
                     fx-action="/logout"
                     fx-method="POST"
@@ -40,6 +88,7 @@
             {{ else }}
             <li>
                 <a
+                    class="nav-item"
                     href="/login"
                     fx-action="/login"
                     fx-method="GET"
@@ -50,6 +99,7 @@
             </li>
             <li>
                 <a
+                    class="nav-item"
                     href="/register"
                     fx-action="/register"
                     fx-method="GET"

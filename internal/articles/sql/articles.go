@@ -94,7 +94,7 @@ func New(db *sql.DB) *ArticleStore {
 	}
 }
 
-func (as *ArticleStore) SearchArticles(ctx context.Context, iris []string) ([]model.Article, error) {
+func (as *ArticleStore) SearchArticles(ctx context.Context, iris []string, filter model.ArticleFilter) ([]model.Article, error) {
 	var builder strings.Builder
 	for i, iri := range iris {
 		builder.WriteRune('\'')
@@ -105,8 +105,15 @@ func (as *ArticleStore) SearchArticles(ctx context.Context, iris []string) ([]mo
 		}
 	}
 	fmt.Println(builder.String())
+
+	query := selectArticles
+	if filter.NextPage > 0 {
+		query += fmt.Sprintf(" AND id >= %d", filter.NextPage)
+	}
+	query += " LIMIT 20"
+
 	rows, err := txdb.GetExecutor(ctx, as.DB).QueryContext(ctx,
-		fmt.Sprintf(selectArticles, builder.String()),
+		fmt.Sprintf(query, builder.String()),
 	)
 	if err != nil {
 		return nil, err

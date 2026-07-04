@@ -1,0 +1,19 @@
+{{ define "page-tabs" }}
+<header>
+    <nav id="page-tabs">
+        <ul>
+            {{ range .Data.Controls }}
+            <li class="nav-item page-tab {{ if .Selected }}selected{{ end }}">
+                <a
+                    href="{{ .URL }}"
+                    fx-action="{{ .URL }}"
+                    fx-target="#content"
+                    fx-swap="innerHTML"
+                    >{{ .Label }}</a
+                >
+            </li>
+            {{ end }}
+        </ul>
+    </nav>
+</header>
+{{ end }}

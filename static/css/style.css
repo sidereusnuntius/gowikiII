@@ -1,24 +1,30 @@
 :root {
     --error-color: #e12525;
+    --link-color: #1a1a1a;
 }
 
 * {
     margin: 0;
     padding: 0;
-    font-family: "Monospace";
+    font-family: "Arial";
+    /*font-size: 0.9rem;*/
     box-sizing: border-box;
+}
+
+body {
+    background-color: #eee;
 }
 
 a,
 a:visited {
     text-decoration: none;
-    color: black;
-    font-weight: 600;
+    color: var(--link-color);
+    /*font-weight: 600;*/
 }
 
 #page-container {
     margin: 10px auto;
-    width: 760px;
+    width: 66%;
     height: 100vh;
     padding: 0px;
 }
@@ -33,8 +39,14 @@ a:visited {
 }
 
 /* FORMS */
+.form-field {
+    display: flex;
+}
 
-.form-field,
+#login-form {
+    display: grid;
+}
+
 #summary {
     display: flex;
     flex-direction: column;
@@ -51,9 +63,34 @@ form > .form-field + .form-field {
 }
 
 #main-search {
-    flex: 1;
     align-self: flex-start;
     margin-left: 10px;
+    margin-right: auto;
+    height: 100%;
+}
+
+#query {
+    height: 100%;
+    padding-left: 20px;
+}
+
+#query:focus {
+    border-color: var(--link-color);
+}
+
+#search-icon {
+    position: absolute;
+    margin-left: 2px;
+    margin-top: 4px;
+}
+
+#search-results {
+    list-style: none;
+}
+
+#search-results a {
+    color: #1e1efd;
+    font-weight: 700;
 }
 
 #main-search > input {
@@ -77,9 +114,9 @@ button[type="submit"] {
     font-weight: 600;
 }
 
-input {
+/*input {
     padding: 0.2em 0.7em;
-}
+}*/
 
 input:user-invalid {
     /* to do*/
@@ -110,11 +147,43 @@ input:focus {
 
 #main-header {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    height: 1.75rem;
 }
 
-nav ul {
+#main-header ul {
     list-style: none;
     display: flex;
     gap: 8px;
+}
+
+/* MAIN CONTENT */
+
+#content {
+    padding: var(--content-padding);
+    min-height: 90vh;
+    margin-top: 10px;
+    /*padding: 10px;*/
+}
+
+#content > :not(header) {
+    /*font-size: 0.9rem;*/
+}
+
+/* MAIN CONTENT CONTROLS */
+
+.page-tab.selected {
+}
+
+#content header ul {
+    display: flex;
+    list-style: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.nav-item {
+    font-weight: 800;
+    color: var(--link-color);
 }

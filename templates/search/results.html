@@ -1,9 +1,22 @@
-{{ define "content" }}
+{{ define "content" }} {{ if eq (len .Data.Results) 0 }}
+<div id="search-not-found">
+    <h1>Nothing found.</h1>
+    <p>No results were found for your search.</p>
+</div>
+{{ else }}
+<h1>Search results</h1>
 <ul id="search-results">
-    {{ range .Data }}
+    {{ range .Data.Results }}
     <li>
-        <a href="/a/{{ .Slug }}">{{ .Slug }}</a>
+        <a
+            href="{{ .URL }}"
+            fx-action="{{ .URL }}"
+            fx-method="GET"
+            fx-target="#content"
+            fx-swap="innerHTML"
+            >{{ .Title }}</a
+        >
     </li>
     {{ end }}
 </ul>
-{{ end }}
+{{ end }} {{ end }}

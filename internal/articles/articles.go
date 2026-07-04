@@ -163,10 +163,10 @@ func (as *ArticleService) remotePatchLocalArticle(ctx context.Context, patch act
 	return nil
 }
 
-func (as *ArticleService) SearchArticles(ctx context.Context, query string) ([]model.Article, error) {
-	res, err := as.Search.SearchArticles(query)
+func (as *ArticleService) SearchArticles(ctx context.Context, filter model.ArticleFilter) (model.SearchResults, error) {
+	res, err := as.Search.SearchArticles(filter.Query)
 	if err != nil {
-		return nil, err
+		return model.SearchResults{}, err
 	}
 
 	ids := make([]string, res.Hits.Len())
@@ -176,12 +176,31 @@ func (as *ArticleService) SearchArticles(ctx context.Context, query string) ([]m
 	}
 	fmt.Println(ids)
 
-	results, err := as.Store.SearchArticles(ctx, ids)
+	articles, err := as.Store.SearchArticles(ctx, ids, filter)
 	if err != nil {
-		return nil, err
+		return model.SearchResults{}, err
 	}
 
-	return results, nil
+	result := model.SearchResults{
+		Query: filter.Query,
+	}
+
+	if len(articles) > 20 {
+		result.HasNextPage = true
+		result.Next = articles[20].ID
+		articles = articles[:20]
+	}
+
+	result.Results = make([]model.SearchResult, len(articles))
+	for i := range articles {
+		result.Results[i] = model.SearchResult{
+			URL: "/a/" + articles[i].Slug,
+			// Summary: articles[i],
+			Title: articles[i].Slug,
+		}
+	}
+
+	return result, nil
 }
 
 func (as *ArticleService) ArticleContent(ctx context.Context, req *model.ArticleRequest) (model.ArticleContent, error) {
