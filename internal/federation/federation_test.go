@@ -3,9 +3,9 @@ package federation
 import (
 	"testing"
 
+	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/mocks"
 	"github.com/sidereusnuntius/gowiki/internal/model"
-	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/stretchr/testify/mock"
 )
@@ -25,7 +25,8 @@ func initialize() state {
 	actors := new(mocks.MockActors)
 	articles := new(mocks.MockArticles)
 	publisher := new(mocks.MockPublisher)
-	federation := New(tests.TestConfig("test.wiki"), store, nil, client, actors, articles, publisher)
+	config := config.DefaultConfig("http://test.wiki")
+	federation := New(config, store, nil, client, actors, articles, publisher)
 
 	return state{
 		store:      store,

@@ -227,7 +227,6 @@ func (as *ArticleStore) GetArticleContent(ctx context.Context, req *model.Articl
 		query.WriteString(bySlug)
 		row = txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, query.String(), req.Slug, req.Host)
 	}
-
 	var (
 		article   model.ArticleContent
 		title     sql.NullString

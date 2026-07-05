@@ -16,7 +16,6 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/db"
 	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
-	"github.com/sidereusnuntius/gowiki/internal/tests"
 )
 
 type TestRig struct {
@@ -32,7 +31,7 @@ func Start(t *testing.T, addr string) TestRig {
 	rand.Read(buf)
 
 	dbURL := "./" + base64.URLEncoding.EncodeToString(buf)
-	cfg := tests.TestConfig(addr)
+	cfg := config.DefaultConfig(addr)
 	t.Log("config", cfg)
 	db, err := db.Open(context.Background(), config.DbConfig{
 		URL:  dbURL,

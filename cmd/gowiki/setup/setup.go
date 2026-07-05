@@ -17,6 +17,8 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
+	"github.com/sidereusnuntius/gowiki/static"
 )
 
 type Wiki struct {
@@ -61,6 +63,13 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 		return Wiki{}, err
 	}
 
+	if err = articles.EnsureMainPage(context.Background()); err != nil {
+		wikilog.Logger.Fatal().
+			Err(err).
+			Msg("failed to create main page for wiki")
+		return Wiki{}, err
+	}
+
 	security.RegisterWorkers(processor.Workers)
 	fed.RegisterWorkers(processor)
 
@@ -78,7 +87,7 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 	articlesHandler.RegisterRoutes(mux)
 
 	// Handler for serving static files such as CSS and Javascript.
-	fileServer := http.FileServer(http.Dir("./static"))
+	fileServer := http.FileServerFS(static.StaticFS)
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Mux for handling Activitypub requests

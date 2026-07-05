@@ -203,6 +203,43 @@ func (as *ArticleService) SearchArticles(ctx context.Context, filter model.Artic
 	return result, nil
 }
 
+func (as *ArticleService) EnsureMainPage(ctx context.Context) error {
+	req := model.ArticleRequest{
+		Slug: "home",
+	}
+	_, err := as.ArticleContent(ctx, &req)
+	if !wikierr.Is(err, wikierr.ErrNotFound) {
+		return err
+	}
+
+	err = as.TxManager.RunInTx(ctx, func(context.Context) error {
+		article, err := as.CreateArticle(ctx, req.Slug, req.Host)
+		if err != nil {
+			return err
+		}
+
+		content := model.ArticleContent{
+			Article: article,
+			// Lang: ,
+			// Title: ,
+			Content: "Hello, world!",
+			// Summary: ,
+			URL:       as.Config.URL.String(),
+			Published: time.Now(),
+			// Updated: ,
+			// Fetched: ,
+		}
+
+		if err = as.Store.SaveArticleContent(ctx, &content); err != nil {
+			return fmt.Errorf("failed to create main page: %w", err)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 func (as *ArticleService) ArticleContent(ctx context.Context, req *model.ArticleRequest) (model.ArticleContent, error) {
 	as.normalizeRequest(req)
 

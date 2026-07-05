@@ -10,7 +10,6 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/db"
 	"github.com/sidereusnuntius/gowiki/internal/processor"
 	"github.com/sidereusnuntius/gowiki/internal/search"
-	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
@@ -50,7 +49,11 @@ func main() {
 		return
 	}
 
-	config := tests.TestConfig("http://localhost:8080")
+	config, err := config.ReadConfig()
+	if err != nil {
+		wikilog.Logger.Fatal().Msg("failed to configure wiki")
+		return
+	}
 
 	wiki, err := setup.SetupWiki(config, db, search, processor)
 	if err != nil {

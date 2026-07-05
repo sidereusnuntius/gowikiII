@@ -34,7 +34,7 @@ func openOrCreateIndex(name string, mapping mapping.IndexMapping) (bleve.Index, 
 			return nil, fmt.Errorf("bleve.New(): failed to create articles index:  %w", err)
 		}
 	} else if !stat.IsDir() {
-		return nil, fmt.Errorf("expected articles index to be at '%s', but there is a file at that path")
+		return nil, fmt.Errorf("expected articles index to be at '%s', but there is a file at that path", indexPath)
 	} else {
 		wikilog.Logger.Debug().Msgf("opening index at %s", indexPath)
 		index, err = bleve.Open(indexPath)
@@ -99,7 +99,7 @@ func init() {
 
 	err := os.MkdirAll(searchIndexesPath, os.ModePerm)
 	if err != nil {
-		wikilog.Logger.Fatal().Err(err).Msgf("failed to create directory '%s' to store indexes")
+		wikilog.Logger.Fatal().Err(err).Msgf("failed to create directory '%s' to store indexes", searchIndexesPath)
 		os.Exit(1)
 	}
 }

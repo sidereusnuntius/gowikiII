@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"code.superseriousbusiness.org/httpsig"
+	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/mocks"
 	"github.com/sidereusnuntius/gowiki/internal/model"
-	"github.com/sidereusnuntius/gowiki/internal/tests"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/stretchr/testify/mock"
 )
@@ -59,7 +59,7 @@ func initialize(t *testing.T) (*Security, *mockStore, *mocks.MockClient) {
 	store := new(mockStore)
 	client := new(mocks.MockClient)
 
-	ks, err := New(tests.TestConfig("localhost:8080"), store, client)
+	ks, err := New(config.DefaultConfig("localhost:8080"), store, client)
 	if err != nil {
 		t.Fatal(err)
 	}
