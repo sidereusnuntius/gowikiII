@@ -16,11 +16,18 @@ import (
 
 var templatesHome string
 
+type PageControl struct {
+	Selected bool
+	URL      string
+	Label    string
+}
+
 type CommonView struct {
 	Title         string
 	Session       *model.Session
 	Authenticated bool
 	Data          any
+	Controls      []PageControl
 }
 
 type Page struct {

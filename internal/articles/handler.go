@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	readTab = iota
-	historyTab
-	editTab
+	ReadTab = iota
+	HistoryTab
+	EditTab
 )
 
 type Handler struct {
@@ -72,8 +72,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	p.Content.Title = fmt.Sprintf("Search results for: \"%s\"", query)
 	p.Content.Data = result
 
+	p.AddTemplate("tabs.html")
 	p.Render("search/results.html")
 }
 
@@ -99,12 +101,13 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Article{
-		Slug:     content.Article.Slug,
-		Host:     content.Article.Host,
-		Content:  content.Content,
-		Controls: articleControls(content.Article.Slug, readTab),
+		Slug:    content.Article.Slug,
+		Host:    content.Article.Host,
+		Content: content.Content,
 	}
 
+	p.Content.Title = content.Article.Slug
+	p.Content.Controls = ArticleControls(content.Article.Slug, ReadTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
 	p.AddTemplate("tabs.html")
@@ -138,10 +141,10 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 		EditSummary:  "",
 		LastModified: content.Updated,
 		ActionURL:    "/a/" + slug + "/edit",
-		Controls:     articleControls(content.Article.Slug, editTab),
 	}
 
 	p.Content.Title = view.Slug
+	p.Content.Controls = ArticleControls(content.Article.Slug, EditTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/write.html")
 	p.AddTemplate("tabs.html")
@@ -189,9 +192,9 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.Read(w, r)
 }
 
-func articleControls(slug string, currentTab int) [3]view.PageControl {
+func ArticleControls(slug string, currentTab int) []render.PageControl {
 	url := "/a/" + slug
-	tabs := [3]view.PageControl{
+	tabs := []render.PageControl{
 		{URL: url, Label: "Read"},
 		{URL: url + "/history", Label: "History"},
 		{URL: url + "/edit", Label: "Edit"},

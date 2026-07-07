@@ -43,9 +43,12 @@ func (h *DefaultHandler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Article{
+		Slug:    "home",
 		Content: content.Content,
 	}
 
+	p.Content.Title = "home"
+	p.Content.Controls = articles.ArticleControls("home", articles.ReadTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
 	p.AddTemplate("tabs.html")

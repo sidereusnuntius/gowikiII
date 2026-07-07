@@ -18,7 +18,6 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
-	"github.com/sidereusnuntius/gowiki/static"
 )
 
 type Wiki struct {
@@ -87,7 +86,7 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 	articlesHandler.RegisterRoutes(mux)
 
 	// Handler for serving static files such as CSS and Javascript.
-	fileServer := http.FileServerFS(static.StaticFS)
+	fileServer := http.FileServer(http.Dir("./static"))
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Mux for handling Activitypub requests

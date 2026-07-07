@@ -1,10 +1,11 @@
-{{ define "content" }} {{ if eq (len .Data.Results) 0 }}
+{{ define "content" }}
+{{ block "page-tabs" . }}{{ end }}
+{{ if eq (len .Data.Results) 0 }}
 <div id="search-not-found">
     <h1>Nothing found.</h1>
     <p>No results were found for your search.</p>
 </div>
 {{ else }}
-<h1>Search results</h1>
 <ul id="search-results">
     {{ range .Data.Results }}
     <li>

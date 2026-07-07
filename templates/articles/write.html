@@ -11,10 +11,6 @@
     fx-swap="innerHTML"
 >
     <div>
-        <label for="article-text">Content of the article</label>
-        <p id="textarea-description">
-            This should be a more description of the next field.
-        </p>
         <textarea
             id="article-text"
             class="text-edit"
@@ -24,12 +20,14 @@
 {{ .Data.Content }}</textarea
         >
     </div>
+    <hr>
     <footer>
-        <div id="summary">
+        <div id="summary-container">
             <label for="summary">Summary</label>
             <input id="summary" name="summary" type="text" />
         </div>
         <div>
+            <button id="publish" type="submit">Publish</button>
             <button
                 type="submit"
                 formaction="/preview"
@@ -40,7 +38,6 @@
             >
                 Preview
             </button>
-            <button type="submit">Publish</button>
         </div>
     </footer>
 </form>

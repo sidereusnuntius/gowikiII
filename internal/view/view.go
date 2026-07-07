@@ -1,15 +1,10 @@
 package view
 
-import "time"
-
-type PageControl struct {
-	Selected bool
-	URL      string
-	Label    string
-}
+import (
+	"time"
+)
 
 type Editor struct {
-	Controls     [3]PageControl
 	Slug         string
 	Host         string
 	Content      string
@@ -19,8 +14,7 @@ type Editor struct {
 }
 
 type Article struct {
-	Controls [3]PageControl
-	Slug     string
-	Host     string
-	Content  string
+	Slug    string
+	Host    string
+	Content string
 }
