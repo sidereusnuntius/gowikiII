@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS revisions (
     iri TEXT NOT NULL,
     code TEXT NOT NULL,
     diff TEXT NOT NULL,
+    reverse_diff TEXT NOT NULL,
     prev_revision_id INTEGER,
     summary TEXT,
     localized_article_id INTEGER NOT NULL,

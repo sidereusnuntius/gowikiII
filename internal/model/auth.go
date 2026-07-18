@@ -3,13 +3,14 @@ package model
 import "time"
 
 type Session struct {
-	Token string
+	Token      string
 	Expiration time.Time
-	Created time.Time
-	User User
+	Created    time.Time
+	User       User
+	ActorID    string
 }
 
 type LoginInput struct {
-	Email string
+	Email    string
 	Password string
 }

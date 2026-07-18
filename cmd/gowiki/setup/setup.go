@@ -73,7 +73,7 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 	fed.RegisterWorkers(processor)
 
 	// Setup handlers.
-	articlesHandler := setupArticlesHandler(articles)
+	articlesHandler := setupArticlesHandler(articles, actors)
 	authHandler := setupAuthHandler(auth)
 	defaultHandler := defaulthandler.New(articles)
 

@@ -20,4 +20,5 @@ type Store interface {
 	GetFollow(ctx context.Context, iri string) (model.Follow, error)
 	SetFollowAccepted(ctx context.Context, iri string, accepted bool) error
 	GetFollowers(ctx context.Context, actorIRI string) ([]string, error)
+	GetActorIdForUser(ctx context.Context, userID int64) (int64, error)
 }

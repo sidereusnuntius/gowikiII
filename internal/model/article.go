@@ -14,6 +14,8 @@ type SearchResults struct {
 	HasNextPage bool
 	Next        int64
 	Total       int
+	QueryAsSlug string
+	SlugExists  bool
 }
 
 type SearchResult struct {
@@ -49,16 +51,22 @@ type ArticleContent struct {
 
 type Revision struct {
 	// Code is a unique code that identifies the revision.
-	Code      string
-	ID        int64
-	IRI       string
-	Diff      string
-	Summary   string
-	Prev      int64
-	ArticleID int64
-	Published time.Time
-	ActorID   int64
-	ActorIRI  string
+	Code          string
+	ID            int64
+	IRI           string
+	Diff          string
+	ReverseDiff   string
+	Summary       string
+	Prev          int64
+	ArticleSlug   string
+	ArticleHost   string
+	ArticleURL    string
+	ArticleID     int64
+	Published     time.Time
+	ActorID       int64
+	ActorUsername string
+	ActorHost     string
+	ActorIRI      string
 }
 
 type ArticleRequest struct {

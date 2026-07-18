@@ -2,7 +2,6 @@ package sqlhelpers
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 )
@@ -10,7 +9,6 @@ import (
 func HandleErr(err error) error {
 	switch err {
 	case sql.ErrNoRows:
-		fmt.Println("not found")
 		return wikierr.New(wikierr.ErrNotFound, "")
 	default:
 		return err

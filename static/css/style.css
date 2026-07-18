@@ -26,6 +26,14 @@ a {
     text-decoration: none;
 }
 
+a.red-link {
+    color: #a23a3a;
+}
+
+a.red-link:visited {
+    color: #7d2323;
+}
+
 .nav-item a:hover, a.nav-item:hover {
     color: #5e63ab;
 }
@@ -76,16 +84,17 @@ header {
 }
 
 main {
+    width: 1000px;
     min-height: 100vh;
-    margin: 10px var(--main-container-margin);
+    margin: 10px auto;
     border: 1px solid var(--header-background);
-
 
     > header {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         padding: 0 var(--padding-text);
+        color: white;
 
         h1 {
             font-size: 1em
@@ -93,15 +102,8 @@ main {
 
         #left {
             display: flex;
-            button {
-                background: none;
-                border: none;
-            }
-
-            svg {
-                height: 1em;
-                width: 1em;
-                cursor: pointer;
+            ul {
+                margin-left: 4px;
             }
         }
     }
@@ -134,6 +136,23 @@ main {
     width: calc(100% - 2 * var(--padding-text));
     min-height: 300px;
     font-family: monospace;
+}
+
+.revision {
+    #header {
+        display: flex;
+    }
+
+    .diff {
+        border-top: 1px solid black;
+        margin-top: 5px;
+        ins {
+            background-color: #a0ffa0;
+        }
+    }
+    h1, h2 {
+        font-size: 1em;
+    }
 }
 
 input:focus-visible, textarea:focus-visible {

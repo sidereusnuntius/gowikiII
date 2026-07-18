@@ -14,12 +14,11 @@ import (
 	"github.com/sidereusnuntius/gowiki/templates"
 )
 
-var templatesHome string
-
 type PageControl struct {
 	Selected bool
 	URL      string
 	Label    string
+	Method   string
 }
 
 type CommonView struct {
@@ -28,11 +27,13 @@ type CommonView struct {
 	Authenticated bool
 	Data          any
 	Controls      []PageControl
+	ExtraControls []PageControl
 }
 
 type Page struct {
 	template     *template.Template
 	subtemplates []string
+	funcs        map[string]any
 	writer       http.ResponseWriter
 	req          *http.Request
 	status       int
@@ -45,6 +46,7 @@ type Page struct {
 func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 	var err error
 	page := Page{
+		funcs:  map[string]any{},
 		writer: w,
 		req:    r,
 		isFx:   r.Header.Get("FX-Request") == "true",
@@ -92,6 +94,11 @@ func (p *Page) AddTemplate(paths ...string) {
 	// 	paths[i] = paths[i]
 	// }
 	p.subtemplates = append(p.subtemplates, paths...)
+}
+
+// TODO
+func (p *Page) NotFound() error {
+	return nil
 }
 
 func (p *Page) Write(text string) error {
@@ -161,6 +168,16 @@ func (p *Page) Redirect(url, target string) {
 	p.status = http.StatusSeeOther
 }
 
+func (p *Page) Funcs(funcs map[string]any) {
+	if p.template != nil {
+		p.template.Funcs(funcs)
+		return
+	}
+	for k, v := range funcs {
+		p.funcs[k] = v
+	}
+}
+
 func (p *Page) Render(path string) {
 	l := log.Debug().Str("template path", path)
 	if p.isFx {
@@ -176,6 +193,10 @@ func (p *Page) Render(path string) {
 		tmpl, err := template.ParseFS(templates.TemplatesFS, p.subtemplates...)
 		if err != nil {
 			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to parse template file")
+		}
+
+		if len(p.funcs) > 0 {
+			tmpl.Funcs(p.funcs)
 		}
 
 		err = tmpl.ExecuteTemplate(p.writer, "content", p.Content)
@@ -197,6 +218,10 @@ func (p *Page) render(path string) {
 	p.template, err = p.template.ParseFS(templates.TemplatesFS, p.subtemplates...)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Strs("subtemplates", p.subtemplates).Msg("failed to read subtemplates from files")
+	}
+
+	if len(p.funcs) > 0 {
+		p.template.Funcs(p.funcs)
 	}
 
 	if err = p.template.Execute(p.writer, p.Content); err != nil {

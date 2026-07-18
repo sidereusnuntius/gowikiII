@@ -1,0 +1,15 @@
+{{ define "article-content" }}
+<div class="revision">
+    <h1>
+        {{ if .Data.Summary }}
+        {{ .Data.Summary }}
+        {{ else }}
+        No summary.
+        {{ end }}
+    </h1>
+    <h2>By <a href="{{ .Data.ActorURL }}">{{ .Data.Actor }}</a>.</h2>
+    <div class="diff">
+    {{ .Data.DiffHTML }}
+    </div>
+</div>
+{{ end }}

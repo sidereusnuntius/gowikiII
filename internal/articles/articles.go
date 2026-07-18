@@ -164,6 +164,12 @@ func (as *ArticleService) remotePatchLocalArticle(ctx context.Context, patch act
 }
 
 func (as *ArticleService) SearchArticles(ctx context.Context, filter model.ArticleFilter) (model.SearchResults, error) {
+	slug := strings.ToLower(strings.ReplaceAll(filter.Query, " ", ""))
+	exists, err := as.Store.ArticleSlugExists(ctx, slug)
+	if err != nil {
+		return model.SearchResults{}, err
+	}
+
 	res, err := as.Search.SearchArticles(filter.Query)
 	if err != nil {
 		return model.SearchResults{}, err
@@ -182,7 +188,9 @@ func (as *ArticleService) SearchArticles(ctx context.Context, filter model.Artic
 	}
 
 	result := model.SearchResults{
-		Query: filter.Query,
+		Query:       filter.Query,
+		SlugExists:  exists,
+		QueryAsSlug: slug,
 	}
 
 	if len(articles) > 20 {
@@ -308,6 +316,76 @@ func (as *ArticleService) LocalEdit(ctx context.Context, in model.ArticleEdit) e
 	return err
 }
 
+func (as *ArticleService) RevisionDiffs(ctx context.Context, revisionID int64) (revision model.Revision, text string, diffs []diffmatchpatch.Diff, err error) {
+	revision, err = as.Store.RevisionByID(ctx, revisionID)
+	if err != nil {
+		err = fmt.Errorf("as.Store.RevisionByID: %w", err)
+		return
+	}
+	fmt.Printf("%+v\n", revision)
+
+	deltas, err := as.Store.ArticleReverseHistory(ctx, revision.ArticleID, revision.ID)
+	if err != nil {
+		err = fmt.Errorf("as.Store.ArticleReverseHistory: %w", err)
+		return
+	}
+
+	content, err := as.Store.GetArticleContent(ctx, &model.ArticleRequest{Slug: revision.ArticleSlug, Host: revision.ArticleHost})
+	if err != nil {
+		err = fmt.Errorf("as.Store.GetArticleContent: %w", err)
+		return
+	}
+	text1 := content.Content
+	for _, delta := range deltas {
+		diffs, err = as.Diffs.DiffFromDelta(text1, delta)
+		if err != nil {
+			return
+		}
+		text = as.Diffs.DiffText2(diffs)
+		text1 = text
+	}
+
+	fmt.Println(text1)
+
+	for i := range diffs {
+		switch diffs[i].Type {
+		case diffmatchpatch.DiffDelete:
+			diffs[i].Type = diffmatchpatch.DiffInsert
+		case diffmatchpatch.DiffInsert:
+			diffs[i].Type = diffmatchpatch.DiffDelete
+		}
+	}
+
+	// diffs = as.Diffs.DiffMain(text, text1, false)
+	return
+}
+
+func (as *ArticleService) RecentChanges(ctx context.Context, after time.Time) ([]model.Revision, error) {
+	revisions, err := as.Store.RecentChanges(ctx, after, 20)
+	if err != nil {
+		return nil, err
+	}
+
+	return revisions, nil
+}
+
+func (as *ArticleService) ArticleHistory(ctx context.Context, slug, host, lang string, after time.Time) ([]model.Revision, error) {
+	if host == "" {
+		host = as.Config.Host
+	}
+	id, err := as.Store.GetLocalizedArticleID(ctx, slug, host, lang)
+	if err != nil {
+		return nil, err
+	}
+
+	history, err := as.Store.RevisionHistory(ctx, id, after, 20)
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
+}
+
 // CreateArticle creates an article object, generating a new IRI for it, and saves it in the data store.
 func (as *ArticleService) CreateArticle(ctx context.Context, slug, host string) (model.Article, error) {
 	var iri string
@@ -350,6 +428,7 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 	var err error
 
 	revision, patches := as.newRevision(content, &edit)
+	fmt.Printf("%+v", revision)
 
 	content.Content = edit.NewContent
 
@@ -481,11 +560,15 @@ func (as *ArticleService) newRevision(content *model.ArticleContent, edit *model
 	diff := as.Diffs.DiffMain(content.Content, edit.NewContent, false)
 	delta := as.Diffs.DiffToDelta(diff)
 
+	reverseDiff := as.Diffs.DiffMain(edit.NewContent, content.Content, false)
+	reverseDelta := as.Diffs.DiffToDelta(reverseDiff)
+
 	revision = model.Revision{
-		Code:    code,
-		IRI:     iri,
-		Diff:    delta,
-		Summary: edit.Summary,
+		Code:        code,
+		IRI:         iri,
+		Diff:        delta,
+		ReverseDiff: reverseDelta,
+		Summary:     edit.Summary,
 		// Prev: 0,
 		ArticleID: content.Article.ID,
 		Published: time.Now().UTC(),

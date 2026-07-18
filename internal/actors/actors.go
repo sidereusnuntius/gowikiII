@@ -91,6 +91,10 @@ func (a *Actors) ActorExists(ctx context.Context, id string) (bool, error) {
 	return a.Store.ActorExists(ctx, id)
 }
 
+func (a *Actors) GetActorIdForUser(ctx context.Context, userID int64) (int64, error) {
+	return a.Store.GetActorIdForUser(ctx, userID)
+}
+
 func (a *Actors) CacheRemoteActor(ctx context.Context, actor activitystreams.Actor) (model.Actor, error) {
 	iri, err := url.Parse(actor.Id)
 	if err != nil {

@@ -1,10 +1,17 @@
 package articles
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"html"
+	"html/template"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/sergi/go-diff/diffmatchpatch"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
@@ -19,13 +26,33 @@ const (
 	EditTab
 )
 
+type Auth interface {
+	GetActorIdForUser(ctx context.Context, userID int64) (int64, error)
+}
+
 type Handler struct {
 	ArticleService *ArticleService
+	AuthService    Auth
+}
+
+func NewHandler(articleService *ArticleService, auth Auth) Handler {
+	return Handler{
+		ArticleService: articleService,
+		AuthService:    auth,
+	}
 }
 
 func (handler *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /a/{slug}", handler.Read)
 	mux.HandleFunc("GET /a/{host}/{slug}", handler.Read)
+
+	mux.HandleFunc("GET /recent", handler.RecentChanges)
+
+	mux.HandleFunc("GET /a/{slug}/history", handler.ArticleHistory)
+	mux.HandleFunc("GET /a/{host}/{slug}/history", handler.ArticleHistory)
+
+	mux.HandleFunc("GET /revision/{id}", handler.Revision)
+	mux.HandleFunc("POST /revision/{id}/undo", authhelpers.Authenticated(handler.RevisionUndo))
 
 	mux.HandleFunc("GET /a/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
 	mux.HandleFunc("GET /a/{host}/{slug}/edit", authhelpers.Authenticated(handler.ArticleEditor))
@@ -114,6 +141,161 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	p.Render("articles/index.html")
 }
 
+func (h *Handler) ArticleHistory(w http.ResponseWriter, r *http.Request) {
+	p, err := render.Init(w, r)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("Read()")
+		return
+	}
+
+	// TODO: get language.
+	slug := r.PathValue("slug")
+	host := r.PathValue("host")
+	var after time.Time
+	if query := r.URL.Query(); query.Has("after") {
+		after, _ = time.Parse(time.RFC3339, query.Get("after"))
+	}
+	history, err := h.ArticleService.ArticleHistory(p.Ctx, slug, host, "", after)
+	if err != nil {
+		p.HandleError(err)
+		return
+	}
+
+	view := view.HistoryView(&h.ArticleService.Config, history, false)
+	p.Content.Title = slug
+	p.Content.Controls = ArticleControls(slug, HistoryTab)
+	p.Content.Data = view
+	p.AddTemplate("tabs.html", "articles/history.html")
+	p.Render("articles/index.html")
+}
+
+func prettyHtml(diffs []diffmatchpatch.Diff) template.HTML {
+	var buff bytes.Buffer
+	for _, diff := range diffs {
+		text := strings.Replace(html.EscapeString(diff.Text), "\n", "&para;<br>", -1)
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			_, _ = buff.WriteString("<ins>")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</ins>")
+		case diffmatchpatch.DiffDelete:
+			_, _ = buff.WriteString("<del")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</del>")
+		case diffmatchpatch.DiffEqual:
+			_, _ = buff.WriteString("<span>")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</span>")
+		}
+	}
+	return template.HTML(buff.String())
+}
+
+func (h *Handler) RecentChanges(w http.ResponseWriter, r *http.Request) {
+	p, err := render.Init(w, r)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("RecentChanges()")
+		return
+	}
+
+	revisions, err := h.ArticleService.RecentChanges(p.Ctx, time.Now())
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("RecentChanges()")
+		p.RenderError(err)
+		return
+	}
+
+	view := view.HistoryView(&h.ArticleService.Config, revisions, true)
+
+	p.Content.Data = view
+	p.Content.Title = "Recent changes"
+	p.AddTemplate("tabs.html")
+	p.Render("recent.html")
+}
+
+func (h *Handler) Revision(w http.ResponseWriter, r *http.Request) {
+	p, err := render.Init(w, r)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("Read()")
+		return
+	}
+
+	revisionID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("Read()")
+		return
+	}
+	fmt.Println("revID:", revisionID)
+	revision, text, diffs, err := h.ArticleService.RevisionDiffs(p.Ctx, revisionID)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.RevisionDiffs")
+		p.RenderError(err)
+		return
+	}
+
+	fmt.Println(text)
+	v := view.RevisionView{
+		DiffHTML: prettyHtml(diffs),
+		Summary:  revision.Summary,
+		ActorURL: view.ActorURL(&h.ArticleService.Config, revision.ActorUsername, revision.ActorHost),
+		Actor:    revision.ActorUsername,
+		URL:      view.RevisionURL(revision.ID),
+	}
+
+	p.Content.Title = "Viewing edit"
+	p.Content.Controls = ArticleControls(revision.ArticleSlug, HistoryTab)
+	p.Content.ExtraControls = []render.PageControl{
+		{
+			URL:    view.RevisionURL(revision.ID) + "/undo",
+			Label:  "undo",
+			Method: http.MethodPost,
+		},
+	}
+	p.Content.Data = v
+	p.AddTemplate("tabs.html", "articles/revision.html")
+	p.Render("articles/index.html")
+}
+
+func (h *Handler) RevisionUndo(w http.ResponseWriter, r *http.Request) {
+	p, err := render.Init(w, r)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("RevisionUndo()")
+		return
+	}
+
+	revisionID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		p.NotFound()
+		return
+	}
+
+	revision, text, _, err := h.ArticleService.RevisionDiffs(p.Ctx, revisionID)
+	if err != nil {
+		p.RenderError(err)
+		return
+	}
+
+	v := view.Editor{
+		Slug:        revision.ArticleSlug,
+		Host:        revision.ArticleHost,
+		Content:     text,
+		Preview:     text,
+		EditSummary: fmt.Sprintf("Undid revision %d by %s", revision.ID, revision.ActorUsername),
+		ActionURL: view.ArticleEditURL(
+			&h.ArticleService.Config,
+			revision.ArticleSlug,
+			revision.ArticleHost,
+		),
+	}
+
+	p.Content.Title = view.ArticleTitle(&h.ArticleService.Config, revision.ArticleSlug, revision.ArticleHost)
+	p.Content.Controls = ArticleControls(revision.ArticleSlug, EditTab)
+	p.Content.Data = v
+	p.AddTemplate("articles/write.html")
+	p.AddTemplate("tabs.html")
+	p.Render("articles/index.html")
+}
+
 func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 	p, err := render.Init(w, r)
 	if err != nil {
@@ -140,7 +322,11 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 		Content:      content.Content,
 		EditSummary:  "",
 		LastModified: content.Updated,
-		ActionURL:    "/a/" + slug + "/edit",
+		ActionURL: view.ArticleEditURL(
+			&h.ArticleService.Config,
+			content.Article.Slug,
+			content.Article.Host,
+		),
 	}
 
 	p.Content.Title = view.Slug
@@ -174,8 +360,15 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	content := p.GetString("content")
 	summary := p.GetString("summary")
 
+	actorID, err := h.AuthService.GetActorIdForUser(p.Ctx, p.Content.Session.User.ID)
+	if err != nil {
+		wikilog.Logger.Error().Err(err).Msg("h.AuthService.GetActorIdForUser")
+		p.RenderError(err)
+		return
+	}
+
 	edit := model.ArticleEdit{
-		ActorID: p.Content.Session.User.ID,
+		ActorID: actorID,
 		Slug:    slug,
 		Host:    host,
 		// IRI: ,
@@ -189,6 +382,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	p.Redirect(view.ArticleURL(&h.ArticleService.Config, slug, host), "#content")
 	h.Read(w, r)
 }
 

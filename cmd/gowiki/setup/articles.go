@@ -22,8 +22,9 @@ func setupArticles(config config.WikiConfig, store articles.ArticleStore, tm *tx
 	return articles.New(config, store, tm, search, client, security, actors)
 }
 
-func setupArticlesHandler(service *articles.ArticleService) *articles.Handler {
+func setupArticlesHandler(service *articles.ArticleService, auth articles.Auth) *articles.Handler {
 	return &articles.Handler{
 		ArticleService: service,
+		AuthService:    auth,
 	}
 }

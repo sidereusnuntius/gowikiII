@@ -1,0 +1,27 @@
+{{ define "content" }}
+{{ block "page-tabs" . }}{{ end }}
+<div>
+    <ul id="edit-history">
+        {{ range .Data.Revisions }}
+        <li>
+            <time datetime="{{ .Published }}">{{ .PublishedDisplay }}</time>
+            <a href="{{ .ArticleURL }}">{{ .Article}}</a>
+            -
+            <a href="{{ .ActorURL }}">{{ .Actor }}</a>
+            -
+            <span>{{ .Summary }}</span>
+            (
+            <a href="{{ .URL }}">view</a>
+            -
+            <a
+                href="{{ .URL }}/undo"
+                fx-action="{{ .URL }}/undo"
+                fx-method="POST"
+                fx-target="#content"
+                fx-swap="innerHTML">undo</a>
+            )
+        </li>
+        {{ end }}
+    </ul>
+</div>
+{{ end }}

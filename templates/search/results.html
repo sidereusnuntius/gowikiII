@@ -3,7 +3,11 @@
 {{ if eq (len .Data.Results) 0 }}
 <div id="search-not-found">
     <h1>Nothing found.</h1>
-    <p>No results were found for your search.</p>
+    {{ if .Data.SlugExists }}
+        <p>There is an article called <a href="/a/{{ .Data.QueryAsSlug }}" class="red-link">{{ .Data.QueryAsSlug }}</a></p>
+    {{ else }}
+        <p>There is no article called <a href="/a/{{ .Data.QueryAsSlug }}/edit" class="red-link">{{ .Data.QueryAsSlug }}</a>, but you can create it clicking on the red link.</p>
+    {{ end }}
 </div>
 {{ else }}
 <ul id="search-results">

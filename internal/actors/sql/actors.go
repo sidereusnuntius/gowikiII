@@ -39,10 +39,11 @@ const (
 	LEFT JOIN public_keys pk ON pk.owner_id = a.id
 	LEFT JOIN shared_inboxes si ON si.id = a.shared_inbox
 	`
-	selectActorByHandle = selectActor + ` WHERE a.username = ? AND a.host = ? LIMIT 1`
-	selectActorByIRI    = selectActor + " WHERE a.uri = ? LIMIT 1"
-	selectActorByID     = selectActor + " WHERE a.id = ? LIMIT 1"
-	insertActor         = `INSERT INTO actors (
+	selectActorByHandle   = selectActor + ` WHERE a.username = ? AND a.host = ? LIMIT 1`
+	selectActorByIRI      = selectActor + " WHERE a.uri = ? LIMIT 1"
+	selectActorByID       = selectActor + " WHERE a.id = ? LIMIT 1"
+	selectActorIdByUserID = "SELECT id FROM actors WHERE user_id = ?"
+	insertActor           = `INSERT INTO actors (
 		user_id,
 		uri,
 		type,
@@ -181,6 +182,17 @@ func (s *ActorsStore) GetActorByID(ctx context.Context, id int64) (model.Actor, 
 	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectActorByID, id)
 
 	return scanActor(row)
+}
+
+func (s *ActorsStore) GetActorIdForUser(ctx context.Context, userID int64) (int64, error) {
+	row := txdb.GetExecutor(ctx, s.DB).QueryRowContext(ctx, selectActorIdByUserID, userID)
+	var id int64
+
+	if err := row.Scan(&id); err != nil {
+		return 0, sqlhelpers.HandleErr(err)
+	}
+
+	return id, nil
 }
 
 func (s *ActorsStore) GetActorByIRI(ctx context.Context, iri string) (model.Actor, error) {

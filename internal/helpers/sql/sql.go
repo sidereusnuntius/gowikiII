@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type Scanner interface {
+	Scan(dest ...any) error
+}
+
 func NullableString(str string) sql.NullString {
 	return sql.NullString{
 		String: str,

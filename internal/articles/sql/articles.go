@@ -10,14 +10,18 @@ import (
 	sqlhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/sql"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
+	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 )
 
 const (
-	selectArticle        = "SELECT id, slug, host, iri, published, federated_edits, restricted_edits FROM articles WHERE slug = ? AND host = ?"
-	selectArticles       = "SELECT id, slug, host, iri FROM articles where iri IN (%s)"
-	articleExists        = "SELECT EXISTS(SELECT 1 FROM articles WHERE iri = ?)"
-	insertArticle        = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
-	insertArticleContent = `INSERT INTO localized_articles (
+	selectSlugExists = "SELECT EXISTS(SELECT 1 FROM articles WHERE slug = ? LIMIT 1)"
+	selectArticle    = "SELECT id, slug, host, iri, published, federated_edits, restricted_edits FROM articles WHERE slug = ? AND host = ?"
+	selectArticles   = "SELECT id, slug, host, iri FROM articles where iri IN (%s)"
+	// selectLocalizedArticleID = "SELECT la.id FROM localized_articles la JOIN articles a ON la.article_id = a.id WHERE a.slug = ? AND a.host = ? AND la.lang_code = ?"
+	selectLocalizedArticleID = "SELECT la.id FROM localized_articles la JOIN articles a ON la.article_id = a.id WHERE a.slug = ? AND a.host = ?"
+	articleExists            = "SELECT EXISTS(SELECT 1 FROM articles WHERE iri = ?)"
+	insertArticle            = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
+	insertArticleContent     = `INSERT INTO localized_articles (
 	lang_code,
 	title,
 	content,
@@ -39,13 +43,14 @@ const (
 		iri,
 		code,
 		diff,
+		reverse_diff,
 		prev_revision_id,
 		summary,
 		localized_article_id,
 		published,
 		actor_internal_id,
 		actor_iri
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
 
 	// Article query components
 	selectArticleContentFulll = `SELECT
@@ -77,6 +82,59 @@ const (
 		FROM articles a JOIN localized_articles la
 		ON la.article_id = a.id
 		`
+	selectRevisionsTpl = `SELECT
+			r.id,
+			r.code,
+			r.summary,
+			r.published,
+			art.slug,
+			art.host,
+			la.url,
+			a.id,
+			a.username,
+			a.host
+		FROM
+			revisions r
+		JOIN actors a
+		ON
+			r.actor_internal_id = a.id
+		JOIN localized_articles la
+		ON r.localized_article_id = la.id
+		JOIN articles art
+		ON la.article_id = art.id`
+	selectRevisions = selectRevisionsTpl + `
+		WHERE
+			r.localized_article_id = ? AND r.published <= ?
+		ORDER BY r.published DESC LIMIT ?`
+	selectRecentRevisions = selectRevisionsTpl + `
+		WHERE
+			r.published <= ?
+		ORDER BY r.published DESC LIMIT ?`
+	selectRevision = `SELECT
+			r.id,
+			r.code,
+			r.summary,
+			r.published,
+			r.diff,
+			art.slug,
+			art.host,
+			la.id,
+			art.iri,
+			a.id,
+			a.username,
+			a.host
+		FROM
+			revisions r
+		JOIN actors a
+		ON
+			r.actor_internal_id = a.id
+		JOIN localized_articles la
+		ON r.localized_article_id = la.id
+		JOIN articles art
+		ON la.article_id = art.id
+		WHERE
+			r.id = ?`
+	selectRevisionsReverseDiffs = `select reverse_diff from revisions where localized_article_id = ? and id >= ? order by id desc`
 
 	bySlug                 = " WHERE slug = ? AND host = ?"
 	byIRI                  = " WHERE iri = ?"
@@ -155,6 +213,16 @@ func (as *ArticleStore) UpdateLocalizedArticle(ctx context.Context, content *mod
 	return err
 }
 
+func (as *ArticleStore) GetLocalizedArticleID(ctx context.Context, slug, host, lang string) (int64, error) {
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectLocalizedArticleID, slug, host)
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		return 0, sqlhelpers.HandleErr(err)
+	}
+
+	return id, nil
+}
+
 func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (model.Article, error) {
 	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectArticle, slug, host)
 
@@ -179,6 +247,16 @@ func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (mode
 	}
 
 	return article, nil
+}
+
+func (as *ArticleStore) ArticleSlugExists(ctx context.Context, slug string) (bool, error) {
+	var exists bool
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectSlugExists, slug)
+	if err := row.Scan(&exists); err != nil {
+		return false, sqlhelpers.HandleErr(err)
+	}
+
+	return exists, nil
 }
 
 func (as *ArticleStore) ArticleExistsLocally(ctx context.Context, iri string) (bool, error) {
@@ -222,6 +300,7 @@ func (as *ArticleStore) GetArticleContent(ctx context.Context, req *model.Articl
 	switch {
 	case len(req.IRI) > 0:
 		query.WriteString(byIRI)
+		fmt.Println("IRI:", req.IRI)
 		row = txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, query.String(), req.IRI)
 	default:
 		query.WriteString(bySlug)
@@ -251,6 +330,7 @@ func (as *ArticleStore) GetArticleContent(ctx context.Context, req *model.Articl
 		&fetched,
 	)
 	if err != nil {
+		wikilog.Logger.Error().Err(err).Any("req", req).Send()
 		return article, sqlhelpers.HandleErr(err)
 	}
 
@@ -303,6 +383,7 @@ func (as *ArticleStore) SaveRevision(ctx context.Context, revision *model.Revisi
 		revision.IRI,
 		revision.Code,
 		revision.Diff,
+		revision.ReverseDiff,
 		sqlhelpers.NullableInt64(revision.Prev),
 		sqlhelpers.NullableString(revision.Summary),
 		revision.ArticleID,
@@ -321,4 +402,163 @@ func (as *ArticleStore) SaveRevision(ctx context.Context, revision *model.Revisi
 
 	revision.ID = id
 	return nil
+}
+
+func (as *ArticleStore) RevisionByID(ctx context.Context, revisionID int64) (model.Revision, error) {
+	fmt.Printf("%d", revisionID)
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectRevision, revisionID)
+	var (
+		revision  model.Revision
+		summary   sql.NullString
+		published int64
+	)
+
+	err := row.Scan(
+		&revision.ID,
+		&revision.Code,
+		&summary,
+		&published,
+		&revision.Diff,
+		&revision.ArticleSlug,
+		&revision.ArticleHost,
+		&revision.ArticleID,
+		&revision.ArticleURL,
+		&revision.ActorID,
+		&revision.ActorUsername,
+		&revision.ActorHost,
+	)
+	if err != nil {
+		return revision, sqlhelpers.HandleErr(err)
+	}
+
+	if summary.Valid {
+		revision.Summary = summary.String
+	}
+	revision.Published = time.Unix(published, 0)
+
+	return revision, nil
+}
+
+func (as *ArticleStore) RecentChanges(ctx context.Context, after time.Time, limit int) ([]model.Revision, error) {
+	if after.IsZero() {
+		after = time.Now()
+	}
+
+	rows, err := txdb.GetExecutor(ctx, as.DB).QueryContext(ctx, selectRecentRevisions, after.Unix(), limit)
+	if err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	var revisions []model.Revision
+	for rows.Next() {
+		r, err := as.scanRevision(rows)
+		if err != nil {
+			return nil, sqlhelpers.HandleErr(err)
+		}
+
+		revisions = append(revisions, r)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	return revisions, nil
+}
+
+func (as *ArticleStore) RevisionHistory(ctx context.Context, localizedArticleID int64, after time.Time, limit int) ([]model.Revision, error) {
+	if after.IsZero() {
+		after = time.Now().UTC()
+	}
+	rows, err := txdb.GetExecutor(ctx, as.DB).QueryContext(ctx, selectRevisions, localizedArticleID, after.Unix(), limit)
+	if err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	var (
+		revisions []model.Revision
+		r         model.Revision
+		published int64
+		summary   sql.NullString
+	)
+	for rows.Next() {
+		err = rows.Scan(
+			&r.ID,
+			&r.Code,
+			&summary,
+			&published,
+			&r.ArticleSlug,
+			&r.ArticleHost,
+			&r.ArticleURL,
+			&r.ActorID,
+			&r.ActorUsername,
+			&r.ActorHost,
+		)
+		if err != nil {
+			return nil, sqlhelpers.HandleErr(err)
+		}
+
+		if summary.Valid {
+			r.Summary = summary.String
+		}
+		r.Published = time.Unix(published, 0)
+		revisions = append(revisions, r)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	return revisions, nil
+}
+
+func (as *ArticleStore) ArticleReverseHistory(ctx context.Context, localizedArticleID, targetRevisionID int64) ([]string, error) {
+	wikilog.Logger.Info().Msgf("fetching history: %d %d", localizedArticleID, targetRevisionID)
+	rows, err := txdb.GetExecutor(ctx, as.DB).QueryContext(ctx, selectRevisionsReverseDiffs, localizedArticleID, targetRevisionID)
+	if err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	var diff string
+	diffs := make([]string, 0)
+	for rows.Next() {
+		if err := rows.Scan(&diff); err != nil {
+			return nil, sqlhelpers.HandleErr(err)
+		}
+
+		diffs = append(diffs, diff)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, sqlhelpers.HandleErr(err)
+	}
+
+	return diffs, nil
+}
+
+func (as *ArticleStore) scanRevision(row sqlhelpers.Scanner) (model.Revision, error) {
+	var (
+		r         model.Revision
+		published int64
+		summary   sql.NullString
+	)
+	err := row.Scan(
+		&r.ID,
+		&r.Code,
+		&summary,
+		&published,
+		&r.ArticleSlug,
+		&r.ArticleHost,
+		&r.ArticleURL,
+		&r.ActorID,
+		&r.ActorUsername,
+		&r.ActorHost,
+	)
+	if err != nil {
+		return r, err
+	}
+
+	if summary.Valid {
+		r.Summary = summary.String
+	}
+	r.Published = time.Unix(published, 0)
+
+	return r, nil
 }
