@@ -5,6 +5,7 @@ import (
 
 	"github.com/sidereusnuntius/gowiki/internal/auth"
 	authstore "github.com/sidereusnuntius/gowiki/internal/auth/sql"
+	"github.com/sidereusnuntius/gowiki/internal/config"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 )
 
@@ -22,8 +23,9 @@ func setupAuth(authStore *authstore.AuthStore, sessionStore auth.SessionStore, a
 	}
 }
 
-func setupAuthHandler(service *auth.Auth) *auth.Handler {
+func setupAuthHandler(config *config.WikiConfig, service *auth.Auth) *auth.Handler {
 	return &auth.Handler{
+		Config:       config,
 		AuthService:  service,
 		SessionStore: service.Sessions,
 	}

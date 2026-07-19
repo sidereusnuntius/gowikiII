@@ -2,6 +2,8 @@ package authhelpers
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/model"
@@ -13,7 +15,8 @@ func Authenticated(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !IsAuthenticated(r.Context()) {
 			// TODO: encode the request's URL path and send it as a query parameter.
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			proceed := base64.URLEncoding.EncodeToString([]byte(r.URL.Path))
+			http.Redirect(w, r, fmt.Sprintf("/login?proceed=%s", proceed), http.StatusSeeOther)
 			return
 		}
 		next.ServeHTTP(w, r)

@@ -66,6 +66,7 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 			"index.html",
 			"container.html",
 			"header.html",
+			"authheader.html",
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read common layout from file: %w", err)
@@ -116,7 +117,7 @@ func (p *Page) RenderError(err error) error {
 func (p *Page) PatchElement(path, templateName, selector string) {
 	wikilog.Logger.Debug().Str("template", path).Str("selector", selector).Msg("patching element")
 	p.writer.Header().Set("FX-target", selector)
-	p.writer.WriteHeader(p.status)
+	p.writer.WriteHeader(http.StatusOK)
 
 	tmpl, err := template.ParseFS(templates.TemplatesFS, path)
 	if err != nil {
@@ -141,6 +142,7 @@ func (p *Page) ReloadPage(path string) {
 		templates.TemplatesFS,
 		"container.html",
 		"header.html",
+		"authheader.html",
 		path,
 	)
 	if err != nil {
@@ -166,16 +168,6 @@ func (p *Page) Redirect(url, target string) {
 	header.Add("Fx-Redirect", url)
 	header.Add("Fx-Redirect-Target", target)
 	p.status = http.StatusSeeOther
-}
-
-func (p *Page) Funcs(funcs map[string]any) {
-	if p.template != nil {
-		p.template.Funcs(funcs)
-		return
-	}
-	for k, v := range funcs {
-		p.funcs[k] = v
-	}
 }
 
 func (p *Page) Render(path string) {

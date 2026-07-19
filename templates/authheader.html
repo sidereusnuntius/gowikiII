@@ -1,0 +1,51 @@
+{{ define "auth-header" }}
+<ul id="auth-header">
+    {{ if .Authenticated }}
+    <li>
+        <a
+            class="nav-item"
+            href="/u/{{.Session.User.Username}}"
+            fx-action="/u/{{.Session.User.Username}}"
+            fx-method="GET"
+            fx-target="#page-container"
+            fx-swap="innerHTML"
+            >{{.Session.User.Username}}</a
+        >
+    </li>
+    <li>
+        <a
+            class="nav-item"
+            href="/logout"
+            fx-action="/logout"
+            fx-method="POST"
+            fx-target="#page-container"
+            fx-swap="innerHTML"
+            >Logout</a
+        >
+    </li>
+    {{ else }}
+    <li>
+        <a
+            class="nav-item"
+            href="/login"
+            fx-action="/login"
+            fx-method="GET"
+            fx-target="#content"
+            fx-swap="innerHTML"
+            >Login</a
+        >
+    </li>
+    <li>
+        <a
+            class="nav-item"
+            href="/register"
+            fx-action="/register"
+            fx-method="GET"
+            fx-target="#content"
+            fx-swap="innerHTML"
+            >Register</a
+        >
+    </li>
+    {{ end }}
+</ul>
+{{ end }}

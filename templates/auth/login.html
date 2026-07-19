@@ -3,11 +3,14 @@
     id="login-form"
     action="/login"
     method="POST"
-    fx-target="#page-container"
-    fx-swap="innerHTML"
+    fx-target="#auth-header"
+    fx-swap="outerHTML"
     fx-action="/login"
     fx-method="POST"
 >
+    {{ if .Data.SuccessRedirect }}
+    <input type="hidden" name="proceed" value="{{ .Data.SuccessRedirect }}" >
+    {{ end }}
     <label for="email">Email</label>
     <div class="auth-field">
         <p class="error-message" aria-live="assertive"></p>

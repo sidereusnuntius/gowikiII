@@ -120,8 +120,12 @@ main {
     cursor: default;
 }
 
-#login-form {
+#login-form, #register-form {
     padding: 0 var(--padding-text);
+}
+
+.form-footer {
+    margin-top: 8px;
 }
 
 #main-content, #article-editor {
@@ -139,6 +143,9 @@ main {
 }
 
 .revision {
+    > * {
+        padding: 0 var(--padding-text);
+    }
     #header {
         display: flex;
     }
@@ -148,6 +155,10 @@ main {
         margin-top: 5px;
         ins {
             background-color: #a0ffa0;
+        }
+        del {
+            background-color: #ffa0a0;
+            text-decoration: none;
         }
     }
     h1, h2 {

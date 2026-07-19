@@ -172,14 +172,14 @@ func (h *Handler) ArticleHistory(w http.ResponseWriter, r *http.Request) {
 func prettyHtml(diffs []diffmatchpatch.Diff) template.HTML {
 	var buff bytes.Buffer
 	for _, diff := range diffs {
-		text := strings.Replace(html.EscapeString(diff.Text), "\n", "&para;<br>", -1)
+		text := strings.ReplaceAll(html.EscapeString(diff.Text), "\n", "&para;<br>")
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
 			_, _ = buff.WriteString("<ins>")
 			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</ins>")
 		case diffmatchpatch.DiffDelete:
-			_, _ = buff.WriteString("<del")
+			_, _ = buff.WriteString("<del>")
 			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</del>")
 		case diffmatchpatch.DiffEqual:
@@ -225,7 +225,6 @@ func (h *Handler) Revision(w http.ResponseWriter, r *http.Request) {
 		wikilog.Logger.Error().Err(err).Msg("Read()")
 		return
 	}
-	fmt.Println("revID:", revisionID)
 	revision, text, diffs, err := h.ArticleService.RevisionDiffs(p.Ctx, revisionID)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("h.ArticleService.RevisionDiffs")

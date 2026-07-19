@@ -8,23 +8,26 @@
     fx-swap="innerHTML"
     fx-method="POST"
 >
+    {{ if .Data.SuccessRedirect }}
+    <input type="hidden" name="proceed" value="{{ .Data.SuccessRedirect }}" >
+    {{ end }}
     <p class="error-message" aria-live="assertive"></p>
-    <div class="form-field">
-        <label for="username">Username</label>
-        <input id="username" name="username" type="text" required />
+    <label for="username">Username</label>
+    <div class="auth-field">
         <label class="error-msg" for="username" aria-live="assertive"></label>
+        <input id="username" name="username" type="text" required />
     </div>
 
-    <div class="form-field">
-        <label for="email">E-mail</label>
-        <input id="email" name="email" type="email" required />
+    <label for="email">E-mail</label>
+    <div class="auth-field">
         <label class="error-msg" for="email" aria-live="assertive"></label>
+        <input id="email" name="email" type="email" required />
     </div>
 
-    <div class="form-field">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" required />
+    <label for="password">Password</label>
+    <div class="auth-field">
         <label class="error-msg" for="password" aria-live="assertive"></label>
+        <input id="password" name="password" type="password" required />
     </div>
 
     <footer class="form-footer">

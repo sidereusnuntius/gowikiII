@@ -17,6 +17,13 @@ function addEventListeners() {
   });
 }
 
+function redirect(res) {
+  const button = document.querySelector("#redirector");
+  button.setAttribute("fx-action", res.headers.get("fx-redirect"));
+  button.setAttribute("fx-target", res.headers.get("fx-redirect-target"));
+  button.click();
+}
+
 function handleCode(event) {
   const res = event.detail.cfg.response;
   // Handling different error codes.
@@ -25,10 +32,7 @@ function handleCode(event) {
     case 303:
       // McGyverism alert: since there is no way to programmatically trigger a fixi request, I have a "redirector" button. If we want to do a request from Javascript,
       // we set the redirector's attributes defined by the fixi library and click on the button.
-      const button = document.querySelector("#redirector");
-      button.setAttribute("fx-action", res.headers.get("fx-redirect"));
-      button.setAttribute("fx-target", res.headers.get("fx-redirect-target"));
-      button.click();
+      redirect(res.headers)
     case 400: // Bad request
       /*
       One or more input values provided by the user are incorrect. We expect the response to contain a set of headers, each starting with Err- followed by
@@ -90,6 +94,8 @@ document.addEventListener("fx:after", (event) => {
 
   if (res.status >= 300) {
     handleCode(event);
+  } else if (res.headers.has("fx-redirect")) {
+    redirect(res);
   }
   console.log("received FX response:", res.status);
   console.log(event);
