@@ -2,6 +2,7 @@ package defaulthandler
 
 import (
 	"context"
+	"html/template"
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/articles"
@@ -15,13 +16,19 @@ type homepageFinder interface {
 	Homepage(ctx context.Context, wiki, locale string) (model.ArticleContent, error)
 }
 
+type renderer interface {
+	Render(string) (string, error)
+}
+
 type DefaultHandler struct {
 	homepage homepageFinder
+	renderer renderer
 }
 
 func New(articleService *articles.ArticleService) *DefaultHandler {
 	return &DefaultHandler{
 		homepage: articleService,
+		renderer: articleService,
 	}
 }
 
@@ -42,9 +49,15 @@ func (h *DefaultHandler) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	articleContent, err := h.renderer.Render(content.Content)
+	if err != nil {
+		p.HandleError(err)
+		return
+	}
+
 	view := view.Article{
 		Slug:    "home",
-		Content: content.Content,
+		Content: template.HTML(articleContent),
 	}
 
 	p.Content.Title = "home"

@@ -57,11 +57,14 @@ require (
 	github.com/riverqueue/river/rivershared v0.34.0 // indirect
 	github.com/riverqueue/river/rivertype v0.34.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/sidereusnuntius/goldmark-wikilink v0.0.0-20260719192736-c0306437f6bf // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/yuin/goldmark v1.8.4 // indirect
+	go.abhg.dev/goldmark/wikilink v0.6.0 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

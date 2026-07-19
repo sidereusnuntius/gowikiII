@@ -21,7 +21,7 @@ type Editor struct {
 type Article struct {
 	Slug    string
 	Host    string
-	Content string
+	Content template.HTML
 }
 
 type RevisionView struct {

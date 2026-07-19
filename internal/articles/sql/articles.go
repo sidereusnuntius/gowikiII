@@ -20,6 +20,7 @@ const (
 	// selectLocalizedArticleID = "SELECT la.id FROM localized_articles la JOIN articles a ON la.article_id = a.id WHERE a.slug = ? AND a.host = ? AND la.lang_code = ?"
 	selectLocalizedArticleID = "SELECT la.id FROM localized_articles la JOIN articles a ON la.article_id = a.id WHERE a.slug = ? AND a.host = ?"
 	articleExists            = "SELECT EXISTS(SELECT 1 FROM articles WHERE iri = ?)"
+	externalArticleExists    = "SELECT EXISTS(SELECT 1 FROM articles WHERE host = ? AND slug = ?)"
 	insertArticle            = "INSERT INTO articles (slug, host, iri, published) VALUES (?, ?, ?, ?) RETURNING id"
 	insertArticleContent     = `INSERT INTO localized_articles (
 	lang_code,
@@ -252,6 +253,16 @@ func (as *ArticleStore) GetArticle(ctx context.Context, slug, host string) (mode
 func (as *ArticleStore) ArticleSlugExists(ctx context.Context, slug string) (bool, error) {
 	var exists bool
 	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, selectSlugExists, slug)
+	if err := row.Scan(&exists); err != nil {
+		return false, sqlhelpers.HandleErr(err)
+	}
+
+	return exists, nil
+}
+
+func (as *ArticleStore) ExternalArticleExistsLocally(ctx context.Context, slug, host string) (bool, error) {
+	var exists bool
+	row := txdb.GetExecutor(ctx, as.DB).QueryRowContext(ctx, externalArticleExists, host, slug)
 	if err := row.Scan(&exists); err != nil {
 		return false, sqlhelpers.HandleErr(err)
 	}

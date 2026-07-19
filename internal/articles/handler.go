@@ -123,6 +123,16 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 
 	content, err := h.ArticleService.ArticleContent(p.Ctx, &req)
 	if err != nil {
+		if wikierr.Is(err, wikierr.ErrNotFound) {
+			h.ArticleEditor(w, r)
+			return
+		}
+		p.HandleError(err)
+		return
+	}
+
+	html, err := h.ArticleService.Render(content.Content)
+	if err != nil {
 		p.HandleError(err)
 		return
 	}
@@ -130,7 +140,7 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	view := view.Article{
 		Slug:    content.Article.Slug,
 		Host:    content.Article.Host,
-		Content: content.Content,
+		Content: template.HTML(html),
 	}
 
 	p.Content.Title = content.Article.Slug
@@ -172,7 +182,7 @@ func (h *Handler) ArticleHistory(w http.ResponseWriter, r *http.Request) {
 func prettyHtml(diffs []diffmatchpatch.Diff) template.HTML {
 	var buff bytes.Buffer
 	for _, diff := range diffs {
-		text := strings.ReplaceAll(html.EscapeString(diff.Text), "\n", "&para;<br>")
+		text := strings.ReplaceAll(html.EscapeString(diff.Text), "\n", "<br>")
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
 			_, _ = buff.WriteString("<ins>")
@@ -342,7 +352,14 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 		wikilog.Logger.Error().Err(err).Msg("Preview()")
 	}
 
-	content := p.GetString("content")
+	source := p.GetString("content")
+	content, err := h.ArticleService.Render(source)
+	if err != nil {
+		p.HandleError(err)
+		return
+	}
+
+	p.Write(content)
 	p.Write(content)
 }
 

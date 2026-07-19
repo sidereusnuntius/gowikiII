@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
+	wikilink "github.com/sidereusnuntius/goldmark-wikilink"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/federation/client"
 	"github.com/sidereusnuntius/gowiki/internal/model"
@@ -20,6 +21,7 @@ import (
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikierr"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
+	"github.com/yuin/goldmark"
 )
 
 type Actors interface {
@@ -37,10 +39,11 @@ type ArticleService struct {
 	// TODO: I think it's better to sign GET requests too, so maybe we create a SignedGet on the security package and have only security here.
 	Client   client.Client
 	Security *security.Security
+	Markdown goldmark.Markdown
 }
 
 func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, search *search.Search, client client.Client, security *security.Security, actors Actors) *ArticleService {
-	return &ArticleService{
+	as := &ArticleService{
 		Search:    search,
 		Store:     store,
 		TxManager: manager,
@@ -50,6 +53,17 @@ func New(config config.WikiConfig, store ArticleStore, manager *txdb.TxManager, 
 		Security:  security,
 		Actors:    actors,
 	}
+
+	markdown := goldmark.New(
+		goldmark.WithExtensions(
+			&wikilink.Extender{
+				Resolver: as,
+			},
+		),
+	)
+
+	as.Markdown = markdown
+	return as
 }
 
 func (as *ArticleService) RemotePatch(ctx context.Context, patch activitystreams.Patch) error {
@@ -581,4 +595,14 @@ func (as *ArticleService) newRevision(content *model.ArticleContent, edit *model
 	)
 
 	return
+}
+
+func (as *ArticleService) Render(source string) (string, error) {
+	var builder strings.Builder
+
+	if err := as.Markdown.Convert([]byte(source), &builder); err != nil {
+		return "", err
+	}
+
+	return builder.String(), nil
 }
