@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/sidereusnuntius/gowiki/internal/articles"
+	"github.com/sidereusnuntius/gowiki/internal/config"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
 	"github.com/sidereusnuntius/gowiki/internal/view"
@@ -23,12 +24,14 @@ type renderer interface {
 type DefaultHandler struct {
 	homepage homepageFinder
 	renderer renderer
+	config   *config.WikiConfig
 }
 
-func New(articleService *articles.ArticleService) *DefaultHandler {
+func New(articleService *articles.ArticleService, config *config.WikiConfig) *DefaultHandler {
 	return &DefaultHandler{
 		homepage: articleService,
 		renderer: articleService,
+		config:   config,
 	}
 }
 
@@ -61,7 +64,7 @@ func (h *DefaultHandler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Content.Title = "home"
-	p.Content.Controls = articles.ArticleControls("home", articles.ReadTab)
+	p.Content.Controls = articles.ArticleControls(h.config, "home", "", articles.ReadTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
 	p.AddTemplate("tabs.html")

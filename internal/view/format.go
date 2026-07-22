@@ -36,8 +36,15 @@ func ArticleURL(config *config.WikiConfig, slug, host string) string {
 	return fmt.Sprintf("/a/%s/%s", host, slug)
 }
 
+func ArticleHistoryURL(config *config.WikiConfig, slug, host string) string {
+	if host == "" || host == config.URL.Host {
+		return fmt.Sprintf("/a/%s/history", slug)
+	}
+	return fmt.Sprintf("/a/%s/%s/history", host, slug)
+}
+
 func ArticleEditURL(config *config.WikiConfig, slug, host string) string {
-	if host == "" || host == config.Host {
+	if host == "" || host == config.URL.Host {
 		return fmt.Sprintf("/a/%s/edit", slug)
 	}
 

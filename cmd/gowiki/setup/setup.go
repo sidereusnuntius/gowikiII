@@ -18,6 +18,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/search"
 	txdb "github.com/sidereusnuntius/gowiki/internal/transactions"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
+	"github.com/sidereusnuntius/gowiki/static"
 )
 
 type Wiki struct {
@@ -75,7 +76,7 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 	// Setup handlers.
 	articlesHandler := setupArticlesHandler(articles, actors)
 	authHandler := setupAuthHandler(&config, auth)
-	defaultHandler := defaulthandler.New(articles)
+	defaultHandler := defaulthandler.New(articles, &config)
 
 	activityPubHandler := setupActivityPubHandler(fed, articles, actors, security)
 
@@ -86,7 +87,8 @@ func SetupWiki(config config.WikiConfig, db *sql.DB, search *search.Search, proc
 	articlesHandler.RegisterRoutes(mux)
 
 	// Handler for serving static files such as CSS and Javascript.
-	fileServer := http.FileServer(http.Dir("./static"))
+	// fileServer := http.FileServer(http.Dir("./static"))
+	fileServer := http.FileServerFS(static.StaticFS)
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
 	// Mux for handling Activitypub requests

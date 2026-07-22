@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/sidereusnuntius/gowiki/internal/config"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
@@ -144,7 +145,7 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Content.Title = content.Article.Slug
-	p.Content.Controls = ArticleControls(content.Article.Slug, ReadTab)
+	p.Content.Controls = ArticleControls(&h.ArticleService.Config, content.Article.Slug, content.Article.Host, ReadTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/read.html")
 	p.AddTemplate("tabs.html")
@@ -173,7 +174,7 @@ func (h *Handler) ArticleHistory(w http.ResponseWriter, r *http.Request) {
 
 	view := view.HistoryView(&h.ArticleService.Config, history, false)
 	p.Content.Title = slug
-	p.Content.Controls = ArticleControls(slug, HistoryTab)
+	p.Content.Controls = ArticleControls(&h.ArticleService.Config, slug, host, HistoryTab)
 	p.Content.Data = view
 	p.AddTemplate("tabs.html", "articles/history.html")
 	p.Render("articles/index.html")
@@ -252,7 +253,7 @@ func (h *Handler) Revision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Content.Title = "Viewing edit"
-	p.Content.Controls = ArticleControls(revision.ArticleSlug, HistoryTab)
+	p.Content.Controls = ArticleControls(&h.ArticleService.Config, revision.ArticleSlug, revision.ArticleHost, HistoryTab)
 	p.Content.ExtraControls = []render.PageControl{
 		{
 			URL:    view.RevisionURL(revision.ID) + "/undo",
@@ -298,7 +299,7 @@ func (h *Handler) RevisionUndo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Content.Title = view.ArticleTitle(&h.ArticleService.Config, revision.ArticleSlug, revision.ArticleHost)
-	p.Content.Controls = ArticleControls(revision.ArticleSlug, EditTab)
+	p.Content.Controls = ArticleControls(&h.ArticleService.Config, revision.ArticleSlug, revision.ArticleHost, EditTab)
 	p.Content.Data = v
 	p.AddTemplate("articles/write.html")
 	p.AddTemplate("tabs.html")
@@ -326,20 +327,20 @@ func (h *Handler) ArticleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := view.Editor{
-		Slug:         content.Article.Slug,
-		Host:         content.Article.Host,
+		Slug:         slug,
+		Host:         host,
 		Content:      content.Content,
 		EditSummary:  "",
 		LastModified: content.Updated,
 		ActionURL: view.ArticleEditURL(
 			&h.ArticleService.Config,
-			content.Article.Slug,
-			content.Article.Host,
+			slug,
+			host,
 		),
 	}
 
 	p.Content.Title = view.Slug
-	p.Content.Controls = ArticleControls(content.Article.Slug, EditTab)
+	p.Content.Controls = ArticleControls(&h.ArticleService.Config, content.Article.Slug, content.Article.Host, EditTab)
 	p.Content.Data = view
 	p.AddTemplate("articles/write.html")
 	p.AddTemplate("tabs.html")
@@ -402,12 +403,11 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.Read(w, r)
 }
 
-func ArticleControls(slug string, currentTab int) []render.PageControl {
-	url := "/a/" + slug
+func ArticleControls(config *config.WikiConfig, slug, host string, currentTab int) []render.PageControl {
 	tabs := []render.PageControl{
-		{URL: url, Label: "Read"},
-		{URL: url + "/history", Label: "History"},
-		{URL: url + "/edit", Label: "Edit"},
+		{URL: view.ArticleURL(config, slug, host), Label: "Read"},
+		{URL: view.ArticleHistoryURL(config, slug, host), Label: "History"},
+		{URL: view.ArticleEditURL(config, slug, host), Label: "Edit"},
 	}
 
 	tabs[currentTab].Selected = true
