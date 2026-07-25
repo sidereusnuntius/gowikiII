@@ -361,7 +361,6 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Write(content)
-	p.Write(content)
 }
 
 func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
