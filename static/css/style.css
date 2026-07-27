@@ -3,9 +3,16 @@
     --main-container-margin: 20px;
     --margin-left: 8px;
     --margin-top: 16px;
-    --header-background: #343434;
-    --padding-text: 0.25rem;
+    /*--header-background: #343434;*/
+    --header-background: rgb(41, 37, 36);
+    --padding-text: 0.5rem;
     --border-length: 2px;
+    --border-radius: 1em;
+    --margin-bottom: 1.25em;
+}
+
+body {
+    background-color: rgb(251, 250, 249);
 }
 
 ul {
@@ -15,7 +22,7 @@ ul {
 * {
     margin: 0;
     padding: 0;
-    font-family: sans-serif;
+    font-family: system-ui;
 }
 
 h1 {
@@ -84,17 +91,27 @@ header {
 }
 
 main {
-    width: 1000px;
+    background-color: white;
+    box-shadow: 0px 0px 3px rgb(153, 153, 153);
+    border-radius: var(--border-radius);
+    width: 44rem;
     min-height: 100vh;
     margin: 10px auto;
-    border: 1px solid var(--header-background);
+    > * {
+        padding: 0 var(--padding-text);
+    }
+
+    /* Spacing between paragraphs and headers. */
+    p {
+        margin-bottom: var(--margin-bottom);
+    }
 
     > header {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
-        padding: 0 var(--padding-text);
         color: white;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
 
         h1 {
             font-size: 1em
@@ -128,16 +145,10 @@ main {
     margin-top: 8px;
 }
 
-#main-content, #article-editor {
-    > * {
-        margin: 0 var(--padding-text);
-    }
-}
-
 #article-text {
     border: none;
     resize: none;
-    width: calc(100% - 2 * var(--padding-text));
+    width: 100%;
     min-height: 300px;
     font-family: monospace;
 }
@@ -202,13 +213,16 @@ button {
 
 article#main-content, output {
     padding: 0 var(--padding-text);
+    ol, ul {
+        padding: 0 1em;
+    }
+
+    ul {
+        list-style: circle;
+    }
 }
 
 output {
     border-top: 1px solid var(--header-background);
     display: block;
-}
-
-#search-results {
-
 }
