@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
@@ -67,12 +66,12 @@ func ReadConfig() (config WikiConfig, err error) {
 	config.Database.URL = readVarWithDefault(config.Database.URL, "WIKI_DB_URL")
 
 	// Maybe the host already contains the port number.
-	var wikiurl string
-	if strings.Contains(config.Host, ":") {
-		wikiurl = fmt.Sprintf("http://%s", config.Host)
-	} else {
-		wikiurl = fmt.Sprintf("http://%s:%d", config.Host, config.Port)
-	}
+	// var wikiurl string
+	// if strings.Contains(config.Host, ":") {
+	wikiurl := fmt.Sprintf("https://%s", config.Host)
+	// } else {
+	// 	wikiurl = fmt.Sprintf("http://%s:%d", config.Host, config.Port)
+	// }
 	config.URL, err = url.Parse(wikiurl)
 	if err != nil {
 		wikilog.Logger.Error().
