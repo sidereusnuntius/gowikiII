@@ -11,14 +11,14 @@
             -
             <span>{{ .Summary }}</span>
             (
-            <a href="{{ .URL }}">view</a>
+            <a href="{{ .URL }}">{{ T "View" }}</a>
             -
             <a
                 href="{{ .URL }}/undo"
                 fx-action="{{ .URL }}/undo"
                 fx-method="POST"
                 fx-target="#content"
-                fx-swap="innerHTML">undo</a>
+                fx-swap="innerHTML">{{ T "Undo" }}</a>
             )
         </li>
         {{ end }}

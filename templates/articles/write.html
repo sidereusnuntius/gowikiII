@@ -23,11 +23,11 @@
     <hr>
     <footer>
         <div id="summary-container">
-            <label for="summary">Summary</label>
+            <label for="summary">{{ T "SummaryLabel" }}</label>
             <input id="summary" name="summary" type="text" />
         </div>
         <div>
-            <button id="publish" type="submit">Publish</button>
+            <button id="publish" type="submit">{{ T "Publish" }}</button>
             <button
                 type="submit"
                 formaction="/preview"
@@ -36,7 +36,7 @@
                 fx-target="#preview"
                 fx-swap="innerHTML"
             >
-                Preview
+                {{ T "Preview" }}
             </button>
         </div>
     </footer>

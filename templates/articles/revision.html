@@ -4,7 +4,7 @@
         {{ if .Data.Summary }}
         {{ .Data.Summary }}
         {{ else }}
-        No summary.
+        {{ T "NoSummary" }}
         {{ end }}
     </h1>
     <h2>By <a href="{{ .Data.ActorURL }}">{{ .Data.Actor }}</a>.</h2>

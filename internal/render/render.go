@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
+	"github.com/sidereusnuntius/gowiki/internal/i18n"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/wikilog"
 	"github.com/sidereusnuntius/gowiki/templates"
@@ -61,7 +62,7 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 
 	if !page.isFx {
 		// If it's not a fixi request, then we need to render the whole page.
-		page.template, err = template.ParseFS(
+		page.template, err = funcs().ParseFS(
 			templates.TemplatesFS,
 			"index.html",
 			"container.html",
@@ -71,6 +72,8 @@ func Init(w http.ResponseWriter, r *http.Request) (*Page, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read common layout from file: %w", err)
 		}
+	} else {
+		page.template = funcs()
 	}
 
 	return &page, nil
@@ -182,7 +185,7 @@ func (p *Page) Render(path string) {
 
 		p.subtemplates = append(p.subtemplates, path)
 
-		tmpl, err := template.ParseFS(templates.TemplatesFS, p.subtemplates...)
+		tmpl, err := p.template.ParseFS(templates.TemplatesFS, p.subtemplates...)
 		if err != nil {
 			wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to parse template file")
 		}
@@ -220,4 +223,10 @@ func (p *Page) render(path string) {
 		wikilog.Logger.Error().Err(err).Str("template", path).Msg("failed to execute template")
 	}
 	wikilog.Logger.Debug().Str("template", path).Strs("subtemplates", p.subtemplates).Msg("rendered template")
+}
+
+func funcs() *template.Template {
+	return template.New("index.html").Funcs(map[string]any{
+		"T": i18n.T,
+	})
 }

@@ -20,7 +20,7 @@
             fx-method="POST"
             fx-target="#page-container"
             fx-swap="innerHTML"
-            >Logout</a
+            >{{ T "Logout" }}</a
         >
     </li>
     {{ else }}
@@ -32,7 +32,7 @@
             fx-method="GET"
             fx-target="#content"
             fx-swap="innerHTML"
-            >Login</a
+            >{{ T "Login" }}</a
         >
     </li>
     <li>
@@ -43,7 +43,7 @@
             fx-method="GET"
             fx-target="#content"
             fx-swap="innerHTML"
-            >Register</a
+            >{{ T "Register" }}</a
         >
     </li>
     {{ end }}

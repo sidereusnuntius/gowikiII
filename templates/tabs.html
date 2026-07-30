@@ -15,7 +15,7 @@
                     {{ if .Method }}
                     fx-method="{{ .Method }}"
                     {{ end }}
-                    >{{ .Label }}</a
+                    >{{ T .Label }}</a
                 >
             </li>
             {{ end }}
@@ -31,7 +31,7 @@
                     fx-action="{{ .URL }}"
                     fx-target="#content"
                     fx-swap="innerHTML"
-                    >{{ .Label }}</a
+                    >{{ T .Label }}</a
                 >
             </li>
             {{ end }}

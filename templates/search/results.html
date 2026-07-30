@@ -2,11 +2,11 @@
 {{ block "page-tabs" . }}{{ end }}
 {{ if eq (len .Data.Results) 0 }}
 <div id="search-not-found">
-    <h1>Nothing found.</h1>
+    <h1>{{ T "NothingFound" }}</h1>
     {{ if .Data.SlugExists }}
-        <p>There is an article called <a href="/a/{{ .Data.QueryAsSlug }}" class="red-link">{{ .Data.QueryAsSlug }}</a></p>
+        <p>{{ T "ArticleFound" }} <a href="/a/{{ .Data.QueryAsSlug }}" class="red-link">{{ .Data.QueryAsSlug }}</a>.</p>
     {{ else }}
-        <p>There is no article called <a href="/a/{{ .Data.QueryAsSlug }}/edit" class="red-link">{{ .Data.QueryAsSlug }}</a>, but you can create it clicking on the red link.</p>
+        <p>{{ T "NoArticleCalled"}} <a href="/a/{{ .Data.QueryAsSlug }}/edit" class="red-link">{{ .Data.QueryAsSlug }}</a>, {{ T "RedLinkCreate" }}.</p>
     {{ end }}
 </div>
 {{ else }}

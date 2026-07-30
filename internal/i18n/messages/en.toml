@@ -1,0 +1,28 @@
+Home = "Home"
+RecentChanges = "Recent changes"
+Media = "Media"
+SearchPlaceholder = "Search"
+Logout = "Logout"
+Login = "Login"
+Register = "Register"
+Read = "Read"
+History = "History"
+Edit = "Edit"
+Preview = "Preview"
+SummaryLabel = "Summary"
+DiffTitle = "Viewing edit"
+NoSummary = "No summary."
+Publish = "Publish"
+Undo = "undo"
+View = "View"
+
+# Auth
+Username = "Username"
+Email = "E-mail"
+
+# Search
+NothingFound = "Nothing found."
+ArticleFound = "There is an article called"
+NoArticleCalled = "There is no article called"
+RedLinkCreate = "but you can create it clicking on the red link"
+SearchResultsFor = "Search results for"

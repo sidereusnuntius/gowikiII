@@ -1,0 +1,28 @@
+Home = "Página inicial"
+RecentChanges = "Mudanças recentes"
+Media = "Arquivos"
+SearchPlaceholder = "Busca"
+Logout = "Sair"
+Login = "Entrar"
+Register = "Cadastro"
+Read = "Ler"
+History = "Histórico"
+Edit = "Editar"
+Preview = "Visualizar"
+SummaryLabel = "Resumo da edição"
+DiffTitle = "Visualizando edição"
+NoSummary = "Sem resumo."
+Publish = "Publicar"
+Undo = "desfazer"
+View = "ver"
+
+# Auth
+Username = "Nome de usuário"
+Email = "Endereço de e-mail"
+
+# Search
+NothingFound = "Nada encontrado."
+ArticleFound = "Existe um artigo chamado"
+NoArticleCalled = "Não existe artigo chamado"
+RedLinkCreate = "mas você pode criá-lo clicando na ligação vermelha"
+SearchResultsFor = "Resultados para"

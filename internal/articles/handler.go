@@ -14,6 +14,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
+	"github.com/sidereusnuntius/gowiki/internal/i18n"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
 	"github.com/sidereusnuntius/gowiki/internal/view"
@@ -100,7 +101,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.Content.Title = fmt.Sprintf("Search results for: \"%s\"", query)
+	p.Content.Title = fmt.Sprintf("%s: \"%s\"", i18n.T("SearchResultsFor"), query)
 	p.Content.Data = result
 
 	p.AddTemplate("tabs.html")
@@ -252,12 +253,12 @@ func (h *Handler) Revision(w http.ResponseWriter, r *http.Request) {
 		URL:      view.RevisionURL(revision.ID),
 	}
 
-	p.Content.Title = "Viewing edit"
+	p.Content.Title = i18n.T("DiffTitle")
 	p.Content.Controls = ArticleControls(&h.ArticleService.Config, revision.ArticleSlug, revision.ArticleHost, HistoryTab)
 	p.Content.ExtraControls = []render.PageControl{
 		{
 			URL:    view.RevisionURL(revision.ID) + "/undo",
-			Label:  "undo",
+			Label:  "Undo",
 			Method: http.MethodPost,
 		},
 	}

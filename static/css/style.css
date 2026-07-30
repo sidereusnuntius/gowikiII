@@ -211,8 +211,12 @@ button {
     flex-direction: column;
 }
 
+#main-content {
+    margin-top: 8px;
+}
+
 article#main-content, output {
-    padding: 0 var(--padding-text);
+    padding: 0 var(--padding-text) 8px;
     ol, ul {
         padding: 0 1em;
     }

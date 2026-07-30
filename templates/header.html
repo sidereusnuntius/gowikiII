@@ -9,7 +9,7 @@
                 fx-target="#content"
                 fx-method="GET"
                 fx-swap="innerHTML"
-                >Home</a
+                >{{ T "Home" }}</a
             >
         </li>
         <li>
@@ -20,7 +20,7 @@
                 fx-target="#content"
                 fx-method="GET"
                 fx-swap="innerHTML"
-                >Recent changes</a
+                >{{ T "RecentChanges" }}</a
             >
         </li>
         <li>
@@ -31,7 +31,7 @@
                 fx-target="#content"
                 fx-method="GET"
                 fx-swap="innerHTML"
-                >Media</a
+                >{{ T "Media" }}</a
             >
         </li>
     </ul>
@@ -44,7 +44,7 @@
         fx-target="#content"
         fx-swap="innerHTML"
     >
-        <input id="query" name="query" type="text" placeholder="Search" />
+        <input id="query" name="query" type="text" placeholder="{{ T `SearchPlaceholder` }}" />
     </form>
     {{ block "auth-header" . }}{{ end }}
 </header>
