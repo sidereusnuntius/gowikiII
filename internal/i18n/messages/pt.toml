@@ -19,6 +19,7 @@ View = "ver"
 # Auth
 Username = "Nome de usuário"
 Email = "Endereço de e-mail"
+Password = "Senha"
 
 # Search
 NothingFound = "Nada encontrado."
