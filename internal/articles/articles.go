@@ -465,7 +465,10 @@ func (as *ArticleService) EditArticleContent(ctx context.Context, content *model
 	if edit.LocalActor && edit.Host != as.Config.Host {
 		patch := streams.PatchAS(content.Article.IRI, patches, &revision)
 
-		inbox := fmt.Sprintf("http://%s/inbox", edit.Host) // TODO: improve this.
+		inbox := fmt.Sprintf("https://%s/inbox", edit.Host) // TODO: improve this.
+		wikilog.Logger.Debug().
+			Str("inbox", inbox).
+			Msg("posting activity")
 		return as.Security.PostSigned(ctx, inbox, patch, edit.ActorIRI)
 	}
 

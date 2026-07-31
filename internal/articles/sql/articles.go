@@ -486,10 +486,10 @@ func (as *ArticleStore) RevisionHistory(ctx context.Context, localizedArticleID 
 	}
 
 	var (
-		revisions []model.Revision
-		r         model.Revision
-		published int64
-		summary   sql.NullString
+		revisions    []model.Revision
+		r            model.Revision
+		published    int64
+		summary, url sql.NullString
 	)
 	for rows.Next() {
 		err = rows.Scan(
@@ -499,7 +499,7 @@ func (as *ArticleStore) RevisionHistory(ctx context.Context, localizedArticleID 
 			&published,
 			&r.ArticleSlug,
 			&r.ArticleHost,
-			&r.ArticleURL,
+			&url,
 			&r.ActorID,
 			&r.ActorUsername,
 			&r.ActorHost,
@@ -510,6 +510,9 @@ func (as *ArticleStore) RevisionHistory(ctx context.Context, localizedArticleID 
 
 		if summary.Valid {
 			r.Summary = summary.String
+		}
+		if url.Valid {
+			r.ArticleURL = url.String
 		}
 		r.Published = time.Unix(published, 0)
 		revisions = append(revisions, r)
@@ -546,9 +549,9 @@ func (as *ArticleStore) ArticleReverseHistory(ctx context.Context, localizedArti
 
 func (as *ArticleStore) scanRevision(row sqlhelpers.Scanner) (model.Revision, error) {
 	var (
-		r         model.Revision
-		published int64
-		summary   sql.NullString
+		r            model.Revision
+		published    int64
+		summary, url sql.NullString
 	)
 	err := row.Scan(
 		&r.ID,
@@ -557,7 +560,7 @@ func (as *ArticleStore) scanRevision(row sqlhelpers.Scanner) (model.Revision, er
 		&published,
 		&r.ArticleSlug,
 		&r.ArticleHost,
-		&r.ArticleURL,
+		&url,
 		&r.ActorID,
 		&r.ActorUsername,
 		&r.ActorHost,
@@ -568,6 +571,9 @@ func (as *ArticleStore) scanRevision(row sqlhelpers.Scanner) (model.Revision, er
 
 	if summary.Valid {
 		r.Summary = summary.String
+	}
+	if url.Valid {
+		r.ArticleURL = url.String
 	}
 	r.Published = time.Unix(published, 0)
 
