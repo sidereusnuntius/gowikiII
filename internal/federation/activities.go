@@ -8,6 +8,9 @@ import (
 )
 
 func (f *Federation) ProcessActivity(ctx context.Context, activity activitystreams.Activity) error {
+	wikilog.Logger.Debug().
+		Str("type", activity.Type).
+		Msg("processing activity")
 	var err error
 	switch activity.Type {
 	case ActivityPatch:
