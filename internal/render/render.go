@@ -122,7 +122,7 @@ func (p *Page) PatchElement(path, templateName, selector string) {
 	p.writer.Header().Set("FX-target", selector)
 	p.writer.WriteHeader(http.StatusOK)
 
-	tmpl, err := template.ParseFS(templates.TemplatesFS, path)
+	tmpl, err := p.template.ParseFS(templates.TemplatesFS, path)
 	if err != nil {
 		wikilog.Logger.Error().Err(err).Msg("failed to parse template")
 	}
