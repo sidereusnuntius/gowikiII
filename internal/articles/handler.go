@@ -139,15 +139,15 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view := view.Article{
+	articleView := view.Article{
 		Slug:    content.Article.Slug,
 		Host:    content.Article.Host,
 		Content: template.HTML(html),
 	}
 
-	p.Content.Title = content.Article.Slug
+	p.Content.Title = view.ArticleTitle(&h.ArticleService.Config, content.Article.Slug, content.Article.Host)
 	p.Content.Controls = ArticleControls(&h.ArticleService.Config, content.Article.Slug, content.Article.Host, ReadTab)
-	p.Content.Data = view
+	p.Content.Data = articleView
 	p.AddTemplate("articles/read.html")
 	p.AddTemplate("tabs.html")
 	p.Render("articles/index.html")
