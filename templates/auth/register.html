@@ -1,4 +1,5 @@
 {{define "content"}}
+{{ block "page-tabs" . }}{{ end }}
 <form
     id="register-form"
     action="/register"
@@ -38,7 +39,7 @@
             fx-target="#page-container"
             fx-swap="innerHTML"
         >
-            {{ T "Register" }}
+            {{ T "RegisterAction" }}
         </button>
     </footer>
 </form>

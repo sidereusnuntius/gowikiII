@@ -9,6 +9,7 @@ import (
 	"github.com/sidereusnuntius/gowiki/internal/config"
 	authhelpers "github.com/sidereusnuntius/gowiki/internal/helpers/auth"
 	httphelpers "github.com/sidereusnuntius/gowiki/internal/helpers/http"
+	"github.com/sidereusnuntius/gowiki/internal/i18n"
 	"github.com/sidereusnuntius/gowiki/internal/model"
 	"github.com/sidereusnuntius/gowiki/internal/render"
 	"github.com/sidereusnuntius/gowiki/internal/view"
@@ -71,8 +72,9 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Content.Data = view
-	p.Content.Title = "Login"
+	p.Content.Title = i18n.T("Login")
 
+	p.AddTemplate("tabs.html")
 	p.Render("auth/login.html")
 }
 
@@ -198,6 +200,6 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page.Content.Data = view
-	page.Content.Title = "Register"
+	page.Content.Title = i18n.T("Register")
 	page.Render("auth/register.html")
 }

@@ -1,4 +1,5 @@
 {{ define "content" }}
+{{ block "page-tabs" . }}{{ end }}
 <form
     id="login-form"
     action="/login"
@@ -13,7 +14,7 @@
     {{ end }}
     <label for="email">{{ T "Email" }}</label>
     <div class="auth-field">
-        <p class="error-message" aria-live="assertive"></p>
+        <label class="error-message" aria-live="assertive"></label>
         <input id="email" name="email" type="email" required />
     </div>
 
