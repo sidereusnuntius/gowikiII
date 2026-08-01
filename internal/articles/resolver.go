@@ -25,7 +25,7 @@ func (as *ArticleService) ResolveWikilink(n *wikilink.Node) (destination []byte,
 		}
 
 		classes = append(classes, class)
-		destination = n.Target
+		destination = []byte(view.ArticleURL(&as.Config, target, ""))
 		return
 	}
 
