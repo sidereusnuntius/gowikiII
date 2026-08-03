@@ -201,5 +201,6 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	page.Content.Data = view
 	page.Content.Title = i18n.T("Register")
+	page.AddTemplate("tabs.html")
 	page.Render("auth/register.html")
 }
